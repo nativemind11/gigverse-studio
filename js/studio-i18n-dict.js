@@ -593,5 +593,21 @@ window.STUDIO_I18N = { en: {
   "🧒 طفل": "🧒 Child",
   "🧓 مسن": "🧓 Senior",
   "🧹 فيه": "🧹 There are",
-  "🧹 نظّف المساحة": "🧹 Clean up storage"
+  "🧹 نظّف المساحة": "🧹 Clean up storage",
+  "المهام": "Tasks",
+  "حساب متسجّل جديد": "New talent account",
+  "🎤 متسجّل — عايز تسجّل صوت؟": "🎤 Talent — want to record your voice?",
+  "اعمل حساب بإيميلك، اختار مهمة، اختار كود الليدر بتاعك، وابدأ تسجّل.": "Create an account with your email, pick a task, choose your leader code, and start recording.",
+  "إنشاء حساب متسجّل": "Create a talent account",
+  "اعمل حساب أو سجّل دخول، اختار مهمة، اختار كود الليدر بتاعك، وابدأ تسجّل.": "Create an account or log in, pick a task, choose your leader code, and start recording.",
+  "متسجّل؟ ادخل من هنا": "Talent? Log in here",
+  "🔗 روابط للمتسجّلين": "🔗 Links for talents",
+  "ابعت الروابط دي للمتسجّلين. فيها كود الليدر بتاعك تلقائيًا، فالمتسجّل بيبدأ بيه من غير ما يختار.": "Send these links to talents. They carry your leader code automatically, so the talent starts with it without choosing.",
+  "ابعت الروابط دي للمتسجّلين عشان يعملوا حساب، وبعدها يختاروا مهمة وكود الليدر.": "Send these links to talents so they can create an account, then pick a task and a leader code.",
+  "رابط إنشاء حساب للمتسجّلين": "Talent sign-up link",
+  "رابط المهام المتاحة": "Available tasks link",
+  "نسخ": "Copy",
+  "اتنسخ ✓": "Copied ✓",
+  "انسخه يدويًا": "Copy it manually",
+  "واتساب": "WhatsApp"
 } };

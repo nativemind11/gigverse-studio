@@ -43,6 +43,8 @@
   <div class="studio-eyebrow">لوحة المراجعة</div>
   <h1 class="studio-title">التسليمات اللي محتاجة مراجعة</h1>
 
+  <div id="share-links" style="margin-top:18px;"></div>
+
   <div class="studio-card" style="margin-top:18px;" id="pending-wrap">
     <p class="studio-hint">جاري التحميل...</p>
   </div>
@@ -65,9 +67,11 @@
 </main>
 
 <script src="js/studio-shared.js"></script>
+<script src="js/studio-share.js"></script>
 <script>
   const user = NMStudio.requireStudioRole("qa");
   if (user) document.getElementById("qa-name").textContent = user.name;
+  if (user) StudioShare.mount("share-links");
   document.getElementById("logout-link").addEventListener("click", (e) => {
     e.preventDefault();
     NMStudio.logout();

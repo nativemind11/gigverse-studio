@@ -99,6 +99,10 @@
     });
   });
 
+  if (new URLSearchParams(location.search).get("mode") === "signup") {
+    document.querySelector('#mode-tabs .studio-tab[data-mode="signup"]').click();
+  }
+
   document.getElementById("login-form").addEventListener("submit", async (e) => {
     e.preventDefault();
     const errorBox = document.getElementById("login-error");

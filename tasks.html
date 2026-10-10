@@ -39,7 +39,7 @@
 <main class="studio-shell wide">
   <div class="studio-eyebrow">المهام المتاحة</div>
   <h1 class="studio-title">اختار مهمة وابدأ تسجّل</h1>
-  <p class="studio-subtitle">مش محتاج حساب — اختار مهمة، اختار كود الليدر بتاعك، وابدأ على طول.</p>
+  <p class="studio-subtitle">اعمل حساب أو سجّل دخول، اختار مهمة، اختار كود الليدر بتاعك، وابدأ تسجّل.</p>
 
   <div id="tasks-wrap" class="studio-grid cols-3" style="margin-top:20px;">
     <p class="studio-hint">جاري تحميل المهام...</p>
@@ -89,6 +89,10 @@
         leadersBox.innerHTML = `<p class="studio-hint mb-0">مفيش أكواد ليدرز متاحة للمهمة دي دلوقتي.</p>`;
         return;
       }
+      // Link from a leader (tasks.html?leader=L001): go straight in with that leader's code.
+      const wanted = (new URLSearchParams(location.search).get("leader") || "").trim().toUpperCase();
+      const match = wanted && detail.leaders.find(l => String(l.leader_code).toUpperCase() === wanted);
+      if (match) { goToSetup(taskId, match.id); return; }
       leadersBox.innerHTML = detail.leaders.map(l => `
         <button type="button" class="studio-btn studio-btn-secondary studio-btn-block" style="margin-bottom:8px; justify-content:flex-start;"
           onclick="goToSetup('${taskId}', '${l.id}')">
