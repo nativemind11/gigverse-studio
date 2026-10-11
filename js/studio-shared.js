@@ -174,6 +174,8 @@
   function apiMarkDownloaded(batchId, downloaded) {
     return apiFetch(`/api/studio/delivery/batches/${encodeURIComponent(batchId)}/downloaded`, { method: "POST", body: JSON.stringify({ downloaded: downloaded !== false }) });
   }
+  function apiFinalizeInfo(taskId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(taskId)}/finalize`); }
+  function apiFinalizeRun(taskId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(taskId)}/finalize`, { method: "POST", body: "{}" }); }
   function apiPurgeStorage(mode) { return apiFetch("/api/studio/delivery/storage/purge", { method: "POST", body: JSON.stringify({ mode }) }); }
   function apiCollectGroup(group) {
     return apiFetch("/api/studio/delivery/collect", { method: "POST", body: JSON.stringify(group) });
@@ -230,6 +232,7 @@
     apiGetMyTasks, apiGetTaskDetail, apiGetLeaders, apiCreateQaReviewer, apiGetQaReviewers,
     apiGetPendingReviews, apiGetReviewDetail, apiApproveSession, apiRejectAllSession,
     apiSubmitReview, qaFetchSampleAudioUrl,
+    apiFinalizeInfo, apiFinalizeRun,
     apiGetPendingDelivery, apiGetDeliveredBatches, openBatchZip, apiGetStorage, apiMarkDownloaded, apiPurgeStorage, apiCollectGroup, downloadGroupSheet, downloadBatchSheet,
     apiFeedbackParse, apiFeedbackPreview, apiFeedbackApply, apiFeedbackItems, apiMyFeedback, timeLeft,
   };

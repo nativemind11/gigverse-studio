@@ -109,7 +109,7 @@
       wrap.innerHTML = `
         <div class="studio-table-wrap">
           <table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>ذكور معتمدة</th><th>إناث معتمدة</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th></tr></thead>
             <tbody>
               ${tasks.map(t => `
                 <tr>
@@ -120,12 +120,114 @@
                   <td>${t.submission_count}</td>
                   <td>${t.approved_male_count}</td>
                   <td>${t.approved_female_count}</td>
+                  <td>${storageCell(t)}</td>
                 </tr>`).join("")}
             </tbody>
           </table>
         </div>`;
     } catch (err) {
       wrap.innerHTML = `<div class="studio-empty"><p>${err.message}</p></div>`;
+    }
+  }
+
+  // ---- "finish the task for good" ---------------------------------------
+  function fmtBytes(n) {
+    n = Number(n) || 0;
+    if (n >= 1073741824) return (n / 1073741824).toFixed(1) + " GB";
+    if (n >= 1048576) return (n / 1048576).toFixed(0) + " MB";
+    return Math.max(1, Math.round(n / 1024)) + " KB";
+  }
+  function storageCell(t) {
+    if (t.storage_cleared_at) {
+      return `<span class="studio-pill status-approved">✅ اتفضّت</span>${Number(t.storage_freed_bytes) ? `<div class="studio-hint">${fmtBytes(t.storage_freed_bytes)}</div>` : ""}`;
+    }
+    if (t.status === "draft") return `<span class="studio-hint">—</span>`;
+    return `<button type="button" class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem; white-space:nowrap;" data-finalize="${t.id}" data-title="${escapeHtml(t.title)}">🧹 إنهاء نهائي</button>`;
+  }
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("button[data-finalize]");
+    if (b) openFinalize(b.dataset.finalize, b.dataset.title);
+  });
+
+  function closeFinalize() { const o = document.getElementById("finalize-overlay"); if (o) o.remove(); }
+  function showFinalize(html) {
+    let o = document.getElementById("finalize-overlay");
+    if (!o) {
+      o = document.createElement("div");
+      o.id = "finalize-overlay";
+      o.style.cssText = "position:fixed; inset:0; background:rgba(0,0,0,0.65); display:flex; align-items:center; justify-content:center; padding:20px; z-index:80;";
+      document.body.appendChild(o);
+    }
+    o.innerHTML = `<div class="studio-card" style="max-width:480px; width:100%; max-height:90vh; overflow:auto; margin:0;">${html}</div>`;
+    return o;
+  }
+
+  async function openFinalize(taskId, title) {
+    showFinalize(`<h3 style="margin-top:0;">🧹 إنهاء المهمة نهائيًا</h3><p class="studio-hint">جاري الفحص...</p>`);
+    try {
+      const info = await NMStudio.apiFinalizeInfo(taskId);
+      const header = `<h3 style="margin-top:0;">🧹 إنهاء المهمة نهائيًا</h3><p class="studio-subtitle" style="margin-top:-6px;"><strong>${escapeHtml(title)}</strong></p>`;
+      if (info.alreadyCleared) {
+        showFinalize(header + `<p>المهمة دي اتفضّت قبل كده.</p><button class="studio-btn studio-btn-secondary studio-btn-block" id="fin-close">إغلاق</button>`);
+        document.getElementById("fin-close").onclick = closeFinalize;
+        return;
+      }
+      if (info.blockers.length) {
+        showFinalize(header +
+          `<p>المهمة لسه مش جاهزة، لازم الأول:</p>
+           <ul style="padding-inline-start:20px; line-height:1.9;">${info.blockers.map(b => `<li class="studio-error" style="display:list-item; background:none; border:none; padding:0;">${escapeHtml(b.message)}</li>`).join("")}</ul>
+           <button class="studio-btn studio-btn-secondary studio-btn-block" id="fin-close">إغلاق</button>`);
+        document.getElementById("fin-close").onclick = closeFinalize;
+        return;
+      }
+      showFinalize(header +
+        `<p>هيتمسح كل ملفات الصوت والـ ZIP بتاعة المهمة دي من التخزين نهائيًا، والمساحة هترجع فاضية.</p>
+         <p class="studio-hint">اللي هيفضل: أسماء الجمل والأرقام والحالات وملفات الإكسل. اللي هيتمسح: التسجيلات نفسها.</p>
+         ${info.warnings.map(w => `<p class="studio-hint" style="color:var(--studio-warn);">⚠️ ${escapeHtml(w.message)}</p>`).join("")}
+         <p style="color:var(--studio-danger); font-weight:700;">ده نهائي ومفيش رجوع منه.</p>
+         <label style="display:flex; gap:10px; align-items:flex-start; margin:14px 0; cursor:pointer;">
+           <input type="checkbox" id="fin-ok" style="margin-top:4px;">
+           <span>أنا شايف إن المهمة خلصت تمامًا (الفيدباك خلص، والملفات اتحمّلت عندي).</span>
+         </label>
+         <p class="studio-error" id="fin-error"></p>
+         <div style="display:flex; gap:10px;">
+           <button class="studio-btn studio-btn-secondary studio-btn-block" id="fin-cancel">إلغاء</button>
+           <button class="studio-btn studio-btn-danger studio-btn-block" id="fin-go" disabled>امسح وفضّي المساحة</button>
+         </div>`);
+      const ok = document.getElementById("fin-ok"), go = document.getElementById("fin-go");
+      ok.onchange = () => { go.disabled = !ok.checked; };
+      document.getElementById("fin-cancel").onclick = closeFinalize;
+      go.onclick = () => runFinalize(taskId, title);
+    } catch (err) {
+      showFinalize(`<h3 style="margin-top:0;">🧹 إنهاء المهمة نهائيًا</h3><p class="studio-error" style="display:block;">${escapeHtml(err.message)}</p><button class="studio-btn studio-btn-secondary studio-btn-block" id="fin-close">إغلاق</button>`);
+      document.getElementById("fin-close").onclick = closeFinalize;
+    }
+  }
+
+  async function runFinalize(taskId, title) {
+    let freed = 0;
+    showFinalize(`<h3 style="margin-top:0;">🧹 جاري التفضية...</h3><p class="studio-hint">متقفلش الصفحة. ممكن ياخد من ثواني لدقايق على حسب حجم الملفات.</p>`);
+    try {
+      for (let i = 0; i < 40; i++) {
+        const r = await NMStudio.apiFinalizeRun(taskId);
+        freed += Number(r.freedBytes) || 0;
+        if (r.done) {
+          showFinalize(`<h3 style="margin-top:0;">✅ المهمة اتفضّت</h3>
+            <p>اتمسحت كل ملفات ${escapeHtml(title)} من التخزين.</p>
+            ${freed > 0 ? `<p class="studio-hint">المساحة اللي اتفضّت: ${fmtBytes(freed)}</p>` : ""}
+            <button class="studio-btn studio-btn-primary studio-btn-block" id="fin-close">تمام</button>`);
+          document.getElementById("fin-close").onclick = closeFinalize;
+          loadTasks();
+          return;
+        }
+      }
+      throw new Error("العملية لسه مكمّلتش — دوس على الزرار تاني عشان تكمّل من مكان ما وقفت.");
+    } catch (err) {
+      showFinalize(`<h3 style="margin-top:0;">⚠️ مكمّلتش</h3><p class="studio-error" style="display:block;">${escapeHtml(err.message)}</p>
+        <p class="studio-hint">اللي اتمسح فعلاً مش هيتأثر، وتقدر تدوس "إنهاء نهائي" تاني تكمّل.</p>
+        <button class="studio-btn studio-btn-secondary studio-btn-block" id="fin-close">إغلاق</button>`);
+      document.getElementById("fin-close").onclick = closeFinalize;
+      loadTasks();
     }
   }
 
