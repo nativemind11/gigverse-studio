@@ -24,6 +24,12 @@
     localStorage.removeItem("studio_user");
   }
 
+  // fetch() that turns a dead network into a readable message instead of the browser's "Failed to fetch"
+  async function safeFetch(url, opts) {
+    try { return await fetch(url, opts); }
+    catch (_) { throw new Error("تعذر الاتصال بالسيرفر. اتأكد من اتصالك بالنت وحاول تاني."); }
+  }
+
   async function apiFetch(path, options = {}) {
     const headers = { "Content-Type": "application/json", ...(options.headers || {}) };
     const token = authToken();
@@ -88,7 +94,7 @@
     const headers = {};
     const token = authToken();
     if (token) headers["Authorization"] = `Bearer ${token}`;
-    const res = await fetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: form });
+    const res = await safeFetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: form });
     let data = null;
     try { data = await res.json(); } catch (_) {}
     if (!res.ok) throw new Error((data && data.error) || "تعذر رفع الملف");
@@ -149,7 +155,7 @@
   // token attached and hand back a blob: URL the <audio> tag CAN use.
   async function qaFetchSampleAudioUrl(sessionSampleId) {
     const token = authToken();
-    const res = await fetch(`${API_BASE_URL}/api/studio/qa/samples/${sessionSampleId}/audio`, {
+    const res = await safeFetch(`${API_BASE_URL}/api/studio/qa/samples/${sessionSampleId}/audio`, {
       headers: token ? { Authorization: `Bearer ${token}` } : {},
     });
     if (!res.ok) throw new Error("تعذر تحميل التسجيل الصوتي");
@@ -184,7 +190,7 @@
   // send — so fetch the file ourselves and save it from a blob: URL.
   async function downloadWithAuth(path, filename) {
     const token = authToken();
-    const res = await fetch(`${API_BASE_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
+    const res = await safeFetch(`${API_BASE_URL}${path}`, { headers: token ? { Authorization: `Bearer ${token}` } : {} });
     if (!res.ok) {
       let msg = "تعذر تحميل الملف";
       try { msg = (await res.json()).error || msg; } catch (_) {}
