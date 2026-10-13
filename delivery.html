@@ -294,11 +294,7 @@
     const pct = Math.min(100, Math.round(st.pct * 100));
     const cls = st.pct >= 0.9 ? "bad" : st.pct >= 0.8 ? "warn" : "";
     card.innerHTML = `
-      <div class="dl-storage-row">
-        <b>💾 مساحة Google Drive</b>
-        <span>${fmtGB(st.usage)} من ${fmtGB(st.limit)} (${pct}%)</span>
-      </div>
-      <div class="dl-bar ${cls}"><span style="width:${pct}%"></span></div>
+      <div class="dl-bar ${cls}" title="${fmtGB(st.usage)} / ${fmtGB(st.limit)} (${pct}%)"><span style="width:${pct}%"></span></div>
       <div class="dl-storage-row">
         <div class="studio-hint">
           ${st.awaitingDownload ? `⚠️ <b>${st.awaitingDownload}</b> تجميع لسه ماتأكدتش إنك نزّلته (النظام مش هيمسح حاجة منه). ` : ""}

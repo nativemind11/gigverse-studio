@@ -38,6 +38,10 @@
   .fb-raw .col-label { background: rgba(45, 212, 191, 0.12); }
   .fb-raw .col-numbers { background: rgba(251, 191, 36, 0.12); }
   .fb-raw .col-desc { background: rgba(167, 139, 250, 0.14); }
+  .fb-raw .col-status { background: rgba(248, 113, 113, 0.12); }
+  .fb-check { display: flex; gap: 8px; align-items: center; cursor: pointer; margin: 4px 0; }
+  .fb-warn { border: 1px solid rgba(251, 191, 36, 0.55); background: rgba(251, 191, 36, 0.08); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  .fb-warn ul { padding-inline-start: 20px; line-height: 1.8; margin: 8px 0; }
   .fb-chip { display: inline-block; background: var(--studio-surface-2); border: 1px solid var(--studio-border); border-radius: 6px; padding: 1px 7px; margin: 1px 2px; font-family: var(--studio-mono); font-size: 0.8rem; }
   .fb-row-bad td { background: rgba(239, 68, 68, 0.08); }
   .fb-err { color: var(--studio-danger); font-size: 0.85rem; }
@@ -101,9 +105,21 @@
         </div>
       </div>
       <div class="studio-field" style="margin:0;">
-        <label for="numbers-col">عمود أرقام التسجيلات</label>
-        <select id="numbers-col"></select>
-        <p class="studio-hint" style="margin:4px 0 0;">بيفهم: 3 — 3, 5, 7 — 2-4 — ٣ و ٥ — all</p>
+        <label>طريقة تحديد رقم التسجيل</label>
+        <div class="fb-radio" style="flex-direction:column; gap:8px;">
+          <label><input type="radio" name="numbers-mode" value="row_order"> ترتيب الصف: صف لكل تسجيل، والتسجيل رقم n هو الصف رقم n لنفس المتسجّل</label>
+          <label><input type="radio" name="numbers-mode" value="column" checked> عمود فيه رقم التسجيل نفسه</label>
+        </div>
+        <div id="numbers-col-wrap" style="margin-top:8px;">
+          <select id="numbers-col"></select>
+          <p class="studio-hint" style="margin:4px 0 0;">بيفهم: 3 — 3, 5, 7 — 2-4 — ٣ و ٥ — all</p>
+        </div>
+        <p class="studio-hint hidden" id="order-hint" style="margin:6px 0 0;">اسم التسجيل (زي hi_fast_01) مش بيتستخدم كرقم، لأنه غالبًا بيبدأ من 1 جوه كل مجموعة.</p>
+      </div>
+      <div class="studio-field" style="margin:0;">
+        <label for="status-col">عمود الحالة (اختياري)</label>
+        <select id="status-col"></select>
+        <div id="status-values" style="margin-top:8px;"></div>
       </div>
       <div class="studio-field" style="margin:0;">
         <label for="desc-col">عمود وصف المشكلة</label>
@@ -118,6 +134,7 @@
   <div class="studio-card fb-step hidden" id="step-preview">
     <h3>3) المعاينة</h3>
     <div class="fb-summary" id="summary"></div>
+    <div id="warn-box"></div>
     <div class="studio-table-wrap"><table class="studio-table" id="result-table"></table></div>
     <div style="margin-top:14px;">
       <button class="studio-btn studio-btn-primary" id="apply-btn">✅ تطبيق الفيدباك</button>
@@ -149,6 +166,7 @@
   let file = null;     // the chosen spreadsheet (re-sent with every step)
   let sheets = [];     // from /parse
   let lastPreview = null;
+  let rejectSet = new Set();   // the status values that mean "send it back"
 
   function toast(html, bad) {
     const t = $("toast");
@@ -204,30 +222,58 @@
     pick("label-col", guess.labelCol, false);
     pick("numbers-col", guess.numbersCol, false);
     pick("desc-col", guess.descCol, true);
+    pick("status-col", guess.statusCol == null ? -1 : guess.statusCol, true);
     document.querySelector(`input[name="label-type"][value="${guess.labelType}"]`).checked = true;
+    document.querySelector(`input[name="numbers-mode"][value="${guess.numbersMode || "column"}"]`).checked = true;
+    rejectSet = new Set(guess.rejectValues || []);
+    toggleNumbersMode();
+    renderStatusValues();
     renderRaw();
+  }
+
+  const numbersMode = () => document.querySelector('input[name="numbers-mode"]:checked').value;
+  function toggleNumbersMode() {
+    const byOrder = numbersMode() === "row_order";
+    $("numbers-col-wrap").classList.toggle("hidden", byOrder);
+    $("order-hint").classList.toggle("hidden", !byOrder);
+  }
+  function renderStatusValues() {
+    const box = $("status-values"), col = Number($("status-col").value);
+    if (!(col >= 0)) { box.innerHTML = ""; return; }
+    const s = sheets[Number($("sheet-select").value)];
+    const vals = s && s.columns[col] && s.columns[col].values;
+    if (!vals) { box.innerHTML = `<p class="studio-hint">العمود ده فيه قيم كتير مش شبه عمود حالة. اختار عمود فيه كلمات قليلة زي مقبول / مرفوض.</p>`; return; }
+    box.innerHTML = `<p class="studio-hint" style="margin:0 0 6px;">علّم على القيم اللي معناها "مرفوض" (بترجع للمتسجّل). الباقي بيتجاهل:</p>`
+      + vals.map((x, i) => `<label class="fb-check"><input type="checkbox" data-i="${i}" ${rejectSet.has(x.v) ? "checked" : ""}> ${esc(x.v)} <span class="studio-hint">(${x.n})</span></label>`).join("");
+    box.querySelectorAll("input").forEach((inp) => inp.addEventListener("change", () => {
+      const v = vals[Number(inp.dataset.i)].v;
+      if (inp.checked) rejectSet.add(v); else rejectSet.delete(v);
+    }));
   }
 
   function applySheet(i) {
     const s = sheets[i];
     $("header-row").value = s.headerRow;
-    fillSelects(s, s.headerRow, s.guess);
+    fillSelects(s, s.headerRow, { ...s.guess, ...(s.suggest || {}) });   // + row order / status column suggestions
   }
   $("sheet-select").addEventListener("change", (e) => applySheet(Number(e.target.value)));
   $("header-row").addEventListener("change", () => {
     const s = sheets[Number($("sheet-select").value)];
     const hr = Math.max(1, Number($("header-row").value) || 1);
-    const keep = { labelCol: Number($("label-col").value || -1), numbersCol: Number($("numbers-col").value || -1), descCol: Number($("desc-col").value), labelType: document.querySelector('input[name="label-type"]:checked').value };
+    const keep = { labelCol: Number($("label-col").value || -1), numbersCol: Number($("numbers-col").value || -1), descCol: Number($("desc-col").value), statusCol: Number($("status-col").value || -1), labelType: document.querySelector('input[name="label-type"]:checked').value, numbersMode: numbersMode(), rejectValues: [...rejectSet] };
     fillSelects(s, hr, keep);
   });
   ["label-col", "numbers-col", "desc-col"].forEach((id) => $(id).addEventListener("change", renderRaw));
+  $("status-col").addEventListener("change", () => { rejectSet = new Set(); renderStatusValues(); renderRaw(); });
+  document.querySelectorAll('input[name="numbers-mode"]').forEach((r) => r.addEventListener("change", () => { toggleNumbersMode(); renderRaw(); }));
 
   function renderRaw() {
     const s = sheets[Number($("sheet-select").value)];
     if (!s) return;
     const hr = Math.max(1, Number($("header-row").value) || 1);
     const cols = columnsFor(s, hr);
-    const cls = (i) => (String(i) === $("label-col").value ? "col-label" : String(i) === $("numbers-col").value ? "col-numbers" : String(i) === $("desc-col").value ? "col-desc" : "");
+    const byOrder = numbersMode() === "row_order";
+    const cls = (i) => (String(i) === $("label-col").value ? "col-label" : !byOrder && String(i) === $("numbers-col").value ? "col-numbers" : String(i) === $("desc-col").value ? "col-desc" : String(i) === $("status-col").value ? "col-status" : "");
     const rows = s.preview.slice(hr - 1, hr + 5);
     $("raw-table").innerHTML = `<thead><tr>${cols.map((c) => `<th class="${cls(c.index)}">${esc(colName(c))}</th>`).join("")}</tr></thead>
       <tbody>${rows.slice(1).map((r) => `<tr>${cols.map((c) => `<td class="${cls(c.index)}">${esc(r[c.index] || "")}</td>`).join("")}</tr>`).join("")}</tbody>`;
@@ -238,6 +284,7 @@
       taskId: $("task-select").value, sheetIndex: $("sheet-select").value, headerRow: $("header-row").value,
       labelCol: $("label-col").value, numbersCol: $("numbers-col").value, descCol: $("desc-col").value,
       labelType: document.querySelector('input[name="label-type"]:checked').value,
+      numbersMode: numbersMode(), statusCol: $("status-col").value || "-1", rejectValues: JSON.stringify([...rejectSet]),
     };
   }
 
@@ -245,7 +292,9 @@
   $("preview-btn").addEventListener("click", async () => {
     showErr("map-error", "");
     const m = mapping();
-    if (m.labelCol === "" || m.numbersCol === "") return showErr("map-error", "اختار عمود الاسم وعمود أرقام التسجيلات.");
+    if (m.labelCol === "") return showErr("map-error", "اختار عمود الاسم أو ملف الـ ZIP.");
+    if (m.numbersMode === "column" && m.numbersCol === "") return showErr("map-error", "اختار عمود أرقام التسجيلات.");
+    if (Number(m.statusCol) >= 0 && !rejectSet.size) return showErr("map-error", "علّم على القيم اللي معناها \"مرفوض\" في عمود الحالة.");
     const btn = $("preview-btn");
     btn.disabled = true; btn.textContent = "جاري المعاينة...";
     try {
@@ -256,12 +305,14 @@
   });
 
   function renderPreview() {
-    const { results, summary, sampleCount, task } = lastPreview;
+    const { results, summary, sampleCount, task, warnings = [] } = lastPreview;
     $("step-preview").classList.remove("hidden");
+    const ign = Object.entries(summary.ignoredBy || {}).map(([v, n]) => `${esc(v)}: ${n}`).join(", ");
     $("summary").innerHTML = `
       <span class="studio-pill status-approved">✅ ${summary.ok} صف صالح</span>
       <span class="studio-pill ${summary.errors ? "status-rejected" : "status-pending"}">${summary.errors ? "❌" : "✓"} ${summary.errors} فيهم مشكلة (مش هيتطبقوا)</span>
       <span class="studio-pill status-pending">👥 ${summary.sessions} متسجّل</span>
+      ${summary.ignored ? `<span class="studio-pill status-pending">🙈 ${summary.ignored} صف اتجاهل (${ign})</span>` : ""}
       <span class="studio-hint">المهمة "${esc(task.title)}" فيها ${sampleCount} تسجيل لكل متسجّل</span>`;
     $("result-table").innerHTML = `
       <thead><tr><th>صف</th><th>الاسم في الملف</th><th>المتسجّل</th><th>الليدر</th><th>التسجيلات</th><th>المشكلة</th><th>النتيجة</th></tr></thead>
@@ -275,10 +326,20 @@
           <td>${esc(r.description || "—")}</td>
           <td>${r.ok ? `<span class="fb-ok">✓ جاهز</span>` : `<span class="fb-err">${esc(r.message)}</span>`}</td>
         </tr>`).join("")}</tbody>`;
-    const apply = $("apply-btn");
-    apply.disabled = summary.ok === 0;
+    $("warn-box").innerHTML = warnings.length
+      ? `<div class="fb-warn"><b>⚠️ راجع قبل التطبيق</b><ul>${warnings.map((w) => `<li>${esc(w.message)}</li>`).join("")}</ul>
+           <label class="fb-check"><input type="checkbox" id="warn-ok"> فاهم التحذيرات وعايز أكمّل</label></div>`
+      : "";
+    if (warnings.length) $("warn-ok").addEventListener("change", updateApply);
+    updateApply();
     $("apply-hint").textContent = summary.ok ? `هيتبعت لـ ${summary.sessions} متسجّل وليدراهم، والعداد 12 ساعة.` : "مفيش صف صالح للتطبيق.";
     $("step-preview").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+
+  function updateApply() {
+    const w = (lastPreview && lastPreview.warnings) || [];
+    const okBox = $("warn-ok");
+    $("apply-btn").disabled = !lastPreview || lastPreview.summary.ok === 0 || (w.length > 0 && !(okBox && okBox.checked));
   }
 
   // ---------------------------------------------------------- 4) apply
@@ -289,7 +350,9 @@
     const btn = $("apply-btn");
     btn.disabled = true; btn.textContent = "جاري التطبيق...";
     try {
-      const r = await NMStudio.apiFeedbackApply(file, mapping());
+      const m = mapping();
+      if ((lastPreview.warnings || []).length) m.confirmWarnings = "1";
+      const r = await NMStudio.apiFeedbackApply(file, m);
       toast(`✅ اتسجّل فيدباك على <b>${r.sessions}</b> متسجّل (${r.samples} تسجيل). عداد ${r.reworkHours} ساعة بدأ.${r.skipped.length ? ` اتخطّينا ${r.skipped.length} صف فيه مشكلة.` : ""}`);
       $("step-preview").classList.add("hidden");
       $("step-map").classList.add("hidden");
@@ -297,7 +360,7 @@
       await loadItems();
     } catch (err) {
       showErr("apply-error", err.message);
-    } finally { btn.textContent = "✅ تطبيق الفيدباك"; btn.disabled = !lastPreview || lastPreview.summary.ok === 0; }
+    } finally { btn.textContent = "✅ تطبيق الفيدباك"; updateApply(); }
   });
 
   // ------------------------------------------------------- tracking list
