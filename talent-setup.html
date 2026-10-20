@@ -26,6 +26,7 @@
 <meta name="twitter:description" content="سجّل جملك الصوتية وسلّمها بسهولة · Record and submit voice tasks">
 <meta name="twitter:image" content="https://gigversestudio.click/assets/og-image.png?v=1">
 <link rel="stylesheet" href="css/studio.css">
+<script src="js/config.js"></script>
 <script src="js/studio-i18n-dict.js"></script>
 <script src="js/studio-i18n.js"></script>
 </head>
@@ -43,20 +44,13 @@
     <!-- step 1: gender -->
     <div id="tab-gender">
       <p class="studio-subtitle">اختار نوعك</p>
-      <div class="studio-grid cols-2">
-        <button type="button" class="studio-btn studio-btn-secondary" style="padding:22px;" onclick="pick('gender','male')">👨 ذكر</button>
-        <button type="button" class="studio-btn studio-btn-secondary" style="padding:22px;" onclick="pick('gender','female')">👩 أنثى</button>
-      </div>
+      <div class="studio-grid cols-2" id="gender-buttons"></div>
     </div>
 
-    <!-- step 2: age bracket -->
+    <!-- step 2: age bracket (only when the task uses age brackets) -->
     <div id="tab-age-bracket" class="hidden">
       <p class="studio-subtitle">اختار الفئة العمرية</p>
-      <div class="studio-grid cols-3">
-        <button type="button" class="studio-btn studio-btn-secondary" style="padding:18px;" onclick="pick('ageBracket','child')">🧒 طفل</button>
-        <button type="button" class="studio-btn studio-btn-secondary" style="padding:18px;" onclick="pick('ageBracket','adult')">🧑 بالغ</button>
-        <button type="button" class="studio-btn studio-btn-secondary" style="padding:18px;" onclick="pick('ageBracket','elderly')">🧓 مسن</button>
-      </div>
+      <div class="studio-grid cols-3" id="bracket-buttons"></div>
     </div>
 
     <!-- step 3: fake name -->
@@ -87,8 +81,33 @@
   NMTalent.requireLogin(location.pathname + location.search);
 
   const answers = { gender: null, ageBracket: null, fakeName: null, age: null };
-  const STEPS = ["tab-gender", "tab-age-bracket", "tab-fake-name", "tab-age"];
+  let task = null;                       // the task with its places left (slots)
+  let STEPS = ["tab-gender", "tab-fake-name", "tab-age"];
   let stepIndex = 0;
+
+  const GENDERS = [["male", "👨 ذكر"], ["female", "👩 أنثى"]];
+  const BRACKETS = [["child", "🧒 طفل"], ["adult", "🧑 بالغ"], ["elderly", "🧓 مسن"]];
+
+  // a slot = the places for one gender (and one age bracket when the task uses them)
+  function slotsOf(gender, bracket) {
+    if (!task || !task.limited) return null;                              // no limit on this task
+    return task.slots.filter(s => s.gender === gender && (bracket === undefined || s.ageBracket === bracket));
+  }
+  function remaining(gender, bracket) {
+    const list = slotsOf(gender, bracket);
+    return list === null ? null : list.reduce((n, s) => n + (s.max === 0 ? 0 : s.remaining), 0);
+  }
+  function optionHtml(label, left, onclick, padding) {
+    const full = left !== null && left <= 0;
+    return `<button type="button" class="studio-btn studio-btn-secondary" style="padding:${padding}px;" ${full ? "disabled" : `onclick="${onclick}"`}>
+      <span>${label}</span><br>
+      <small>${left === null ? "" : full ? "<span>تم الاكتفاء</span>" : `<span>متبقي</span> <span dir="ltr">${left}</span>`}</small></button>`;
+  }
+  function renderOptions() {
+    document.getElementById("gender-buttons").innerHTML = GENDERS.map(([g, label]) => optionHtml(label, remaining(g), `pick('gender','${g}')`, 22)).join("");
+    document.getElementById("bracket-buttons").innerHTML = BRACKETS
+      .map(([b, label]) => optionHtml(label, remaining(answers.gender, b), `pick('ageBracket','${b}')`, 18)).join("");
+  }
 
   function showStep(i) {
     STEPS.forEach((id, idx) => document.getElementById(id).classList.toggle("hidden", idx !== i));
@@ -97,8 +116,13 @@
 
   function pick(field, value) {
     answers[field] = value;
+    if (field === "gender") {
+      answers.ageBracket = null;
+      STEPS = task && task.use_age_brackets ? ["tab-gender", "tab-age-bracket", "tab-fake-name", "tab-age"] : ["tab-gender", "tab-fake-name", "tab-age"];
+      renderOptions();
+    }
     stepIndex++;
-    if (field === "ageBracket") loadFakeNames();
+    if (STEPS[stepIndex] === "tab-fake-name") loadFakeNames();
     showStep(stepIndex);
   }
 
@@ -145,22 +169,27 @@
       errorBox.textContent = err.message;
       errorBox.style.display = "block";
       btn.disabled = false; btn.textContent = "🎙️ ابدأ التسجيل";
-      if (err.message.includes("الاسم")) { stepIndex = 2; showStep(stepIndex); loadFakeNames(); }
+      if (err.message.includes("الاسم")) { stepIndex = STEPS.indexOf("tab-fake-name"); showStep(stepIndex); loadFakeNames(); }
+      // somebody took the last place a second before: reload the places and start again from the first step
+      if (err.message.includes("الاكتفاء") || err.message.includes("مش مطلوبين")) { refreshTask().then(() => { stepIndex = 0; showStep(0); }); }
     }
   });
 
-  (async function loadTaskTitle() {
+  async function refreshTask() {
     try {
       const detail = await NMTalent.getTaskDetail(taskId);
-      document.getElementById("task-title").textContent = detail.task.title;
+      task = detail.task;
+      document.getElementById("task-title").textContent = task.title;
     } catch (_) {
       document.getElementById("task-title").textContent = "بياناتك";
     }
-  })();
+    renderOptions();
+    showStep(stepIndex);
+  }
 
   window.pick = pick;
   window.confirmFakeName = confirmFakeName;
-  showStep(0);
+  refreshTask();
 </script>
 </body>
 </html>

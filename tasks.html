@@ -26,6 +26,7 @@
 <meta name="twitter:description" content="سجّل جملك الصوتية وسلّمها بسهولة · Record and submit voice tasks">
 <meta name="twitter:image" content="https://gigversestudio.click/assets/og-image.png?v=1">
 <link rel="stylesheet" href="css/studio.css">
+<script src="js/config.js"></script>
 <script src="js/studio-i18n-dict.js"></script>
 <script src="js/studio-i18n.js"></script>
 </head>
@@ -67,15 +68,35 @@
         wrap.innerHTML = `<div class="studio-empty"><div class="icon">🎙️</div><p>لسه مفيش مهام متاحة دلوقتي. تابعنا وارجع تاني بعد شوية.</p></div>`;
         return;
       }
-      wrap.innerHTML = tasksCache.map(t => `
+      wrap.innerHTML = tasksCache.map(t => {
+        const allFull = t.limited && t.slots.every(s => s.full || s.max === 0);
+        // old tasks (no quotas) keep the old "available" number when they have one
+        const legacy = !t.limited && t.quantity ? ` • العدد المتاح: ${Math.max(t.quantity - t.submission_count, 0)}` : "";
+        return `
         <div class="studio-card">
           <h3 style="margin:4px 0 8px;">${escapeHtml(t.title)}</h3>
-          <p class="studio-hint" style="margin-bottom:16px;">${t.sample_count} جملة • العدد المتاح: ${Math.max(t.quantity - t.submission_count, 0)}</p>
-          <button class="studio-btn studio-btn-primary studio-btn-block" onclick="openPicker('${t.id}')">ابدأ التسجيل</button>
-        </div>`).join("");
+          <p class="studio-hint" style="margin-bottom:12px;">${t.sample_count} جملة${legacy}</p>
+          ${slotsHtml(t)}
+          ${allFull
+            ? `<button class="studio-btn studio-btn-secondary studio-btn-block" disabled>تم الاكتفاء</button>`
+            : `<button class="studio-btn studio-btn-primary studio-btn-block" onclick="openPicker('${t.id}')">ابدأ التسجيل</button>`}
+        </div>`;
+      }).join("");
     } catch (err) {
       wrap.innerHTML = `<div class="studio-empty"><p>${err.message}</p></div>`;
     }
+  }
+
+  // the places left per gender (and per age bracket when the task uses them)
+  const GENDER_WORD = { male: "ولاد", female: "بنات" };
+  const BRACKET_WORD = { child: "أطفال", adult: "بالغين", elderly: "كبار السن" };
+  function slotsHtml(t) {
+    if (!t.limited) return "";
+    return `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">` + t.slots.map(s => {
+      const full = s.full || s.max === 0;
+      const who = `<span>${GENDER_WORD[s.gender]}</span>` + (s.ageBracket ? ` <span>${BRACKET_WORD[s.ageBracket]}</span>` : "");
+      return `<span class="studio-pill ${full ? "status-rejected" : "status-approved"}">${who} ${full ? `<span>تم الاكتفاء</span>` : `<span>متبقي</span> <span dir="ltr">${s.remaining} / ${s.max}</span>`}</span>`;
+    }).join("") + `</div>`;
   }
 
   async function openPicker(taskId) {

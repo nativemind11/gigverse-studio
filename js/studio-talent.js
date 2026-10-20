@@ -2,7 +2,7 @@
 // only identity is the opaque session_token returned when they start a
 // session, kept in localStorage AND in the URL so a bookmark/reload works.
 (function () {
-  const API_BASE_URL = "https://nativoya.vercel.app";
+  const API_BASE_URL = window.STUDIO_CONFIG.apiBase;
 
   // Separate token storage from js/studio-shared.js (leader/qa/head_leader)
   // — a talent account is its own thing, never mixed up with those.
@@ -68,10 +68,10 @@
     return data;
   }
 
-  async function signup(name, email, password, whatsapp) {
+  async function signup(name, email, password) {
     const data = await apiFetch("/api/studio/auth/talent/signup", {
       method: "POST",
-      body: JSON.stringify({ name, email, password, whatsapp }),
+      body: JSON.stringify({ name, email, password }),
     });
     saveSession(data.token, data.user);
     return data;

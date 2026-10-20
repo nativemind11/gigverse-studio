@@ -13,7 +13,7 @@
 (function () {
   "use strict";
 
-  const DB_NAME = "nativoya-studio-queue";
+  const DB_NAME = "studio-queue";
   const STORE = "pending";
 
   function openDb() {

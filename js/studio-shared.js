@@ -3,7 +3,7 @@
 // so being logged into the main site and the Studio are two independent
 // sessions, exactly as designed.
 (function () {
-  const API_BASE_URL = "https://nativoya.vercel.app";
+  const API_BASE_URL = window.STUDIO_CONFIG.apiBase;
 
   function authToken() { return localStorage.getItem("studio_token"); }
   function currentUser() {
@@ -42,7 +42,7 @@
     }
     let data = null;
     try { data = await res.json(); } catch (_) {}
-    if (!res.ok) throw new Error((data && data.error) || "حصل خطأ غير متوقع.");
+    if (!res.ok) { const e = new Error((data && data.error) || "حصل خطأ غير متوقع."); e.status = res.status; throw e; }
     return data;
   }
 
@@ -180,6 +180,16 @@
   function apiMarkDownloaded(batchId, downloaded) {
     return apiFetch(`/api/studio/delivery/batches/${encodeURIComponent(batchId)}/downloaded`, { method: "POST", body: JSON.stringify({ downloaded: downloaded !== false }) });
   }
+  const J = (method, body) => ({ method, body: JSON.stringify(body || {}) });
+  function apiGetTask(id) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`); }
+  function apiUpdateTask(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`, J("PATCH", body)); }
+  function apiUpdateQuotas(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/quotas`, J("PUT", body)); }
+  function apiAddTaskLeader(id, leaderId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/leaders`, J("POST", { leaderId })); }
+  function apiCreateLeader(body) { return apiFetch("/api/studio/headleader/leaders", J("POST", body)); }
+  function apiUpdateLeader(id, body) { return apiFetch(`/api/studio/headleader/leaders/${encodeURIComponent(id)}`, J("PATCH", body)); }
+  function apiQaStats() { return apiFetch("/api/studio/headleader/qa-stats"); }
+  function apiDriveStatus() { return apiFetch("/api/studio/drive/status"); }
+  function apiDriveConnectUrl() { return apiFetch("/api/studio/drive/connect-url"); }
   function apiLeaderOverview() { return apiFetch("/api/studio/leader/overview"); }
   function apiFinalizeInfo(taskId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(taskId)}/finalize`); }
   function apiFinalizeRun(taskId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(taskId)}/finalize`, { method: "POST", body: "{}" }); }
@@ -239,7 +249,8 @@
     apiGetMyTasks, apiGetTaskDetail, apiGetLeaders, apiCreateQaReviewer, apiGetQaReviewers,
     apiGetPendingReviews, apiGetReviewDetail, apiApproveSession, apiRejectAllSession,
     apiSubmitReview, qaFetchSampleAudioUrl,
-    apiFinalizeInfo, apiFinalizeRun, apiLeaderOverview,
+    apiFinalizeInfo, apiFinalizeRun, apiLeaderOverview, apiDriveStatus, apiDriveConnectUrl,
+    apiGetTask, apiUpdateTask, apiUpdateQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
     apiGetPendingDelivery, apiGetDeliveredBatches, openBatchZip, apiGetStorage, apiMarkDownloaded, apiPurgeStorage, apiCollectGroup, downloadGroupSheet, downloadBatchSheet,
     apiFeedbackParse, apiFeedbackPreview, apiFeedbackApply, apiFeedbackItems, apiMyFeedback, timeLeft,
   };

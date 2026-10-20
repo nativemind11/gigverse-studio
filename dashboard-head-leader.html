@@ -26,6 +26,7 @@
 <meta name="twitter:description" content="سجّل جملك الصوتية وسلّمها بسهولة · Record and submit voice tasks">
 <meta name="twitter:image" content="https://gigversestudio.click/assets/og-image.png?v=1">
 <link rel="stylesheet" href="css/studio.css">
+<script src="js/config.js"></script>
 <script src="js/studio-i18n-dict.js"></script>
 <script src="js/studio-i18n.js"></script>
 </head>
@@ -54,8 +55,33 @@
 
   <div id="share-links"></div>
 
+  <div class="studio-card" style="margin-bottom:18px;">
+    <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
+      <div>
+        <h3 style="margin:0 0 4px;">☁️ Google Drive</h3>
+        <p class="studio-hint" id="drive-status" style="margin:0;">جاري الفحص...</p>
+      </div>
+      <button type="button" class="studio-btn studio-btn-secondary" id="drive-btn" style="padding:8px 16px;">ربط Google Drive</button>
+    </div>
+    <p class="studio-error" id="drive-error"></p>
+  </div>
+
   <div class="studio-card" id="tasks-wrap">
     <div class="studio-empty"><p>جاري التحميل...</p></div>
+  </div>
+
+  <div class="studio-card" style="margin-top:18px;">
+    <h3 style="margin-top:0;">الليدرز</h3>
+    <p class="studio-hint" style="margin-top:-6px;">الليدر بتعمله إنت بس. محدش يقدر يعمل حساب ليدر بنفسه.</p>
+    <div class="studio-grid cols-3">
+      <div class="studio-field" style="margin:0;"><label for="ld-name">الاسم</label><input type="text" id="ld-name"></div>
+      <div class="studio-field" style="margin:0;"><label for="ld-email">الإيميل</label><input type="email" id="ld-email"></div>
+      <div class="studio-field" style="margin:0;"><label for="ld-password">كلمة المرور</label><input type="password" id="ld-password" minlength="6"></div>
+    </div>
+    <p class="studio-error" id="ld-create-error"></p>
+    <p class="studio-success" id="ld-create-success"></p>
+    <button class="studio-btn studio-btn-primary" id="ld-create-btn" style="margin-top:10px;">+ إضافة ليدر</button>
+    <div id="leaders-list" style="margin-top:18px;"></div>
   </div>
 
   <div class="studio-card" style="margin-top:18px;">
@@ -109,7 +135,7 @@
       wrap.innerHTML = `
         <div class="studio-table-wrap">
           <table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>المطلوب</th><th>مراجعو QA</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th></tr></thead>
             <tbody>
               ${tasks.map(t => `
                 <tr>
@@ -118,6 +144,8 @@
                   <td>${t.sample_count}</td>
                   <td>${t.leader_count}</td>
                   <td>${t.submission_count}</td>
+                  <td>${quotaCell(t)}</td>
+                  <td>${qaCell(t)}</td>
                   <td>${t.approved_male_count}</td>
                   <td>${t.approved_female_count}</td>
                   <td>${storageCell(t)}</td>
@@ -128,6 +156,19 @@
     } catch (err) {
       wrap.innerHTML = `<div class="studio-empty"><p>${err.message}</p></div>`;
     }
+  }
+
+  // ---- places wanted / taken, and which QA reviewers handled the task ----
+  const GENDER_WORD = { male: "ولاد", female: "بنات" };
+  const BRACKET_WORD = { child: "أطفال", adult: "بالغين", elderly: "كبار السن" };
+  function quotaCell(t) {
+    if (!t.limited) return `<span class="studio-hint">—</span>`;
+    return t.slots.map(s => `<div><span>${GENDER_WORD[s.gender]}</span>${s.ageBracket ? ` <span>${BRACKET_WORD[s.ageBracket]}</span>` : ""}
+      <span dir="ltr" class="${s.full ? "studio-error" : ""}" style="${s.full ? "display:inline; background:none; border:none; padding:0;" : ""}">${s.used} / ${s.max}</span></div>`).join("");
+  }
+  function qaCell(t) {
+    const list = t.qa_summary || [];
+    return list.length ? list.map(q => `<div>${escapeHtml(q.name)} <span dir="ltr" class="studio-hint">(${q.n})</span></div>`).join("") : `<span class="studio-hint">—</span>`;
   }
 
   // ---- "finish the task for good" ---------------------------------------
@@ -231,6 +272,30 @@
     }
   }
 
+  // ---- Google Drive connection (scripts + reference audio live there) ----
+  async function loadDrive() {
+    const st = document.getElementById("drive-status"), btn = document.getElementById("drive-btn");
+    try {
+      const s = await NMStudio.apiDriveStatus();
+      st.textContent = s.connected ? `متصل: ${s.email}` : "غير متصل — لازم تربط حساب Google عشان السكريبتات والعينات الصوتية.";
+      btn.textContent = s.connected ? "تغيير الحساب" : "ربط Google Drive";
+    } catch (err) {
+      if (err.status === 404) { st.closest(".studio-card").classList.add("hidden"); return; }   // this backend has no Drive connect endpoint
+      st.textContent = err.message;
+    }
+  }
+  document.getElementById("drive-btn").addEventListener("click", async () => {
+    const e = document.getElementById("drive-error"); e.textContent = "";
+    try { const { url } = await NMStudio.apiDriveConnectUrl(); location.href = url; }
+    catch (err) { e.textContent = err.message; }
+  });
+  (() => {
+    const r = new URLSearchParams(location.search).get("drive");
+    const msg = { connected: "اتربط Google Drive بنجاح ✅", denied: "اتلغى ربط Google Drive.", failed: "تعذر ربط Google Drive — جرّب تاني." }[r];
+    if (msg) { document.getElementById("drive-error").textContent = msg; history.replaceState(null, "", location.pathname); }
+  })();
+  loadDrive();
+
   function escapeHtml(s) {
     const div = document.createElement("div");
     div.textContent = s;
@@ -242,11 +307,12 @@
   async function loadQaReviewers() {
     const wrap = document.getElementById("qa-reviewers-list");
     try {
-      const reviewers = await NMStudio.apiGetQaReviewers();
+      const reviewers = await NMStudio.apiQaStats();
       wrap.innerHTML = reviewers.length
         ? `<div class="studio-table-wrap"><table class="studio-table">
-            <thead><tr><th>الاسم</th><th>الإيميل</th></tr></thead>
-            <tbody>${reviewers.map(r => `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.email)}</td></tr>`).join("")}</tbody>
+            <thead><tr><th>الاسم</th><th>الإيميل</th><th>تسليمات اتراجعت</th><th>معتمدة</th><th>مرفوضة</th></tr></thead>
+            <tbody>${reviewers.map(r => `<tr><td>${escapeHtml(r.name)}</td><td>${escapeHtml(r.email)}</td>
+              <td>${r.reviewed}</td><td>${r.approved}</td><td>${r.rejected}</td></tr>`).join("")}</tbody>
           </table></div>`
         : `<p class="studio-hint mb-0">لسه معملتش أي حساب مراجع.</p>`;
     } catch (err) {
@@ -254,6 +320,60 @@
     }
   }
   loadQaReviewers();
+
+  // ---- leaders (created by the head leader only) ----
+  async function loadLeaders() {
+    const wrap = document.getElementById("leaders-list");
+    try {
+      const leaders = await NMStudio.apiGetLeaders();
+      wrap.innerHTML = leaders.length
+        ? `<div class="studio-table-wrap"><table class="studio-table">
+            <thead><tr><th>الكود</th><th>الاسم</th><th>الإيميل</th><th>الفريق</th><th>التسليمات</th><th>المهام</th><th>الحالة</th><th></th></tr></thead>
+            <tbody>${leaders.map(l => `<tr>
+              <td><span class="studio-code">${escapeHtml(l.leader_code)}</span></td>
+              <td>${escapeHtml(l.name)}</td>
+              <td><span style="font-family:var(--studio-mono); font-size:0.8rem; direction:ltr; unicode-bidi:plaintext;">${escapeHtml(l.email)}</span></td>
+              <td>${l.talents}</td><td>${l.sessions}</td><td>${l.tasks}</td>
+              <td><span class="studio-pill ${l.is_active ? "status-approved" : "status-rejected"}">${l.is_active ? "شغّال" : "متوقف"}</span></td>
+              <td style="white-space:nowrap;">
+                <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.8rem;" data-ld-toggle="${l.id}" data-active="${l.is_active}">${l.is_active ? "إيقاف" : "تشغيل"}</button>
+                <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.8rem;" data-ld-pass="${l.id}">كلمة مرور جديدة</button>
+              </td></tr>`).join("")}</tbody></table></div>`
+        : `<p class="studio-hint mb-0">لسه معملتش أي ليدر.</p>`;
+    } catch (err) {
+      wrap.innerHTML = `<p class="studio-error" style="display:block;">${err.message}</p>`;
+    }
+  }
+  loadLeaders();
+  document.getElementById("leaders-list").addEventListener("click", async (e) => {
+    const tg = e.target.closest("button[data-ld-toggle]"), ps = e.target.closest("button[data-ld-pass]");
+    try {
+      if (tg) { await NMStudio.apiUpdateLeader(tg.dataset.ldToggle, { isActive: tg.dataset.active !== "true" }); loadLeaders(); }
+      if (ps) {
+        const pw = prompt("اكتب كلمة المرور الجديدة (6 أحرف على الأقل):");
+        if (pw) { await NMStudio.apiUpdateLeader(ps.dataset.ldPass, { password: pw }); alert("اتغيّرت كلمة المرور."); }
+      }
+    } catch (err) { alert(err.message); }
+  });
+  document.getElementById("ld-create-btn").addEventListener("click", async () => {
+    const errorBox = document.getElementById("ld-create-error"), successBox = document.getElementById("ld-create-success");
+    errorBox.style.display = "none"; successBox.style.display = "none";
+    const name = document.getElementById("ld-name").value.trim(), email = document.getElementById("ld-email").value.trim(), password = document.getElementById("ld-password").value;
+    if (!name || !email || !password) { errorBox.textContent = "املا كل الحقول."; errorBox.style.display = "block"; return; }
+    const btn = document.getElementById("ld-create-btn");
+    btn.disabled = true; btn.textContent = "جاري الإضافة...";
+    try {
+      const l = await NMStudio.apiCreateLeader({ name, email, password });
+      successBox.textContent = `✓ اتعمل الحساب. كود الليدر: ${l.leader_code}`;
+      successBox.style.display = "block";
+      ["ld-name", "ld-email", "ld-password"].forEach(id => { document.getElementById(id).value = ""; });
+      loadLeaders();
+    } catch (err) {
+      errorBox.textContent = err.message; errorBox.style.display = "block";
+    } finally {
+      btn.disabled = false; btn.textContent = "+ إضافة ليدر";
+    }
+  });
 
   document.getElementById("qa-create-btn").addEventListener("click", async () => {
     const errorBox = document.getElementById("qa-create-error");
