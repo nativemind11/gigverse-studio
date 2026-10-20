@@ -767,5 +767,20 @@ window.STUDIO_I18N = { en: {
   "تسليمات اتراجعت": "Reviewed submissions",
   "✓ اتعمل الحساب. كود الليدر: {}": "✓ Account created. Leader code: {}",
   "حسابات الليدر والـ QA بيعملها الهيد ليدر. ادخل من هنا لو عندك حساب.": "Leader and QA accounts are created by the head leader. Log in here if you have an account.",
-  "{} جملة": "{} sentences"
+  "{} جملة": "{} sentences",
+  "تعديل المهمة": "Edit task",
+  "التعديلات دي بتتطبّق على طول، حتى لو المهمة منشورة وفيها ناس بتسجّل.": "These changes apply right away, even if the task is published and people are recording.",
+  "الأساسيات": "Basics",
+  "حفظ الأساسيات": "Save basics",
+  "✓ اتحفظت الأساسيات": "✓ Basics saved",
+  "تقدر تزوّد أو تقلّل العدد في أي وقت، بس مينفعش تنزّل عن عدد الناس المسجّلين فعلاً. لو خلّيت كل الخانات 0 تبقى المهمة من غير حد.": "You can raise or lower the numbers at any time, but not below the number of people already registered. If you leave every box at 0 the task has no limit.",
+  "حفظ الأعداد": "Save quotas",
+  "✓ اتحفظت الأعداد": "✓ Quotas saved",
+  "✓ اتضاف الليدر": "✓ Leader added",
+  "مفيش مهمة محددة. ارجع للوحة التحكم واختار المهمة.": "No task selected. Go back to the dashboard and pick a task.",
+  "الجمل مش بتستخدم سامبل مرجعي دلوقتي. فعّل الخيار من \"الأساسيات\" فوق لو عايز تستخدمه.": "The sentences don't use a reference sample right now. Turn the option on in \"Basics\" above if you want to use it.",
+  "تعديل": "Edit",
+  "✏️ تعديل": "✏️ Edit",
+  "المسجّلين حاليًا:": "Currently registered:",
+  "المهمة لسه من غير ليدر.": "The task has no leader yet."
 } };

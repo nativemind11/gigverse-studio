@@ -135,7 +135,7 @@
       wrap.innerHTML = `
         <div class="studio-table-wrap">
           <table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>المطلوب</th><th>مراجعو QA</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>المطلوب</th><th>مراجعو QA</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th><th>تعديل</th></tr></thead>
             <tbody>
               ${tasks.map(t => `
                 <tr>
@@ -149,6 +149,7 @@
                   <td>${t.approved_male_count}</td>
                   <td>${t.approved_female_count}</td>
                   <td>${storageCell(t)}</td>
+                  <td><a class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem; white-space:nowrap;" href="edit-task.html?id=${encodeURIComponent(t.id)}">✏️ تعديل</a></td>
                 </tr>`).join("")}
             </tbody>
           </table>
