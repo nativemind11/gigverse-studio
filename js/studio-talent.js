@@ -100,7 +100,7 @@
 
   function getTasks() { return apiFetch("/api/studio/talent/tasks"); }
   function getTaskDetail(taskId) { return apiFetch(`/api/studio/talent/tasks/${taskId}`); }
-  function getAvailableFakeNames(taskId) { return apiFetch(`/api/studio/talent/tasks/${taskId}/fake-names`); }
+  function getAvailableFakeNames(taskId, gender) { return apiFetch(`/api/studio/talent/tasks/${taskId}/fake-names${gender ? "?gender=" + encodeURIComponent(gender) : ""}`); }
 
   function createSession(payload) {
     return apiFetch("/api/studio/talent/sessions", { method: "POST", body: JSON.stringify(payload) });

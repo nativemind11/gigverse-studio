@@ -51,6 +51,7 @@
       <div class="studio-eyebrow">تعديل المهمة</div>
       <h1 class="studio-title" id="task-title-h">—</h1>
       <p class="studio-hint">التعديلات دي بتتطبّق على طول، حتى لو المهمة منشورة وفيها ناس بتسجّل.</p>
+      <div id="system-line" style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:6px;"></div>
 
       <h3 style="margin-top:18px;">الأساسيات</h3>
       <div class="studio-field">
@@ -92,7 +93,7 @@
     </div>
 
     <!-- 3) leaders -->
-    <div class="studio-card">
+    <div class="studio-card" id="leaders-card">
       <h3 style="margin-top:0;">الليدرز</h3>
       <div id="leaders-list"></div>
       <div style="display:flex; gap:8px; flex-wrap:wrap; margin-top:12px;">
@@ -103,8 +104,43 @@
       <p class="studio-success" id="leader-success"></p>
     </div>
 
+    <!-- 3b) per-person scripts -->
+    <div class="studio-card hidden" id="scripts-card">
+      <h3 style="margin-top:0;">السكريبتات</h3>
+      <p class="studio-hint" style="margin-top:0;">كل متسجّل بياخد سكريبت واحد. تقدر تضيف سكريبتات جديدة في أي وقت، بس مينفعش تشيل أو تغيّر اللي اتحجز.</p>
+      <p class="studio-hint" id="scripts-summary"></p>
+      <div id="scripts-list" style="max-height:260px; overflow-y:auto; margin-bottom:12px;"></div>
+      <div class="studio-field">
+        <label for="add-scripts-files">إضافة سكريبتات (.txt — كل ملف سكريبت)</label>
+        <input type="file" id="add-scripts-files" accept=".txt" multiple>
+      </div>
+      <p class="studio-error" id="scripts-error"></p>
+      <p class="studio-success" id="scripts-success"></p>
+      <button type="button" class="studio-btn studio-btn-secondary" id="add-scripts-btn">رفع السكريبتات</button>
+    </div>
+
+    <!-- 3c) codes -->
+    <div class="studio-card hidden" id="codes-card">
+      <h3 style="margin-top:0;">الأكواد</h3>
+      <p class="studio-hint" style="margin-top:0;">الكود اللي اتحجز بيفضل لصاحبه. الأكواد الجديدة بتتضاف على الموجود، ومفيش كود بيتكرر.</p>
+      <p class="studio-hint" id="codes-summary"></p>
+      <div class="studio-grid cols-2">
+        <div class="studio-field">
+          <label for="add-codes-male">إضافة أكواد الولاد (.txt)</label>
+          <input type="file" id="add-codes-male" accept=".txt">
+        </div>
+        <div class="studio-field">
+          <label for="add-codes-female">إضافة أكواد البنات (.txt)</label>
+          <input type="file" id="add-codes-female" accept=".txt">
+        </div>
+      </div>
+      <p class="studio-error" id="codes-error"></p>
+      <p class="studio-success" id="codes-success"></p>
+      <button type="button" class="studio-btn studio-btn-secondary" id="add-codes-btn">رفع الأكواد</button>
+    </div>
+
     <!-- 4) samples -->
-    <div class="studio-card">
+    <div class="studio-card" id="samples-card">
       <h3 style="margin-top:0;">السامبلات الصوتية</h3>
       <p class="studio-hint hidden" id="ref-off-note">الجمل مش بتستخدم سامبل مرجعي دلوقتي. فعّل الخيار من "الأساسيات" فوق لو عايز تستخدمه.</p>
       <div id="samples-section">
@@ -132,7 +168,7 @@
 
   const $ = (id) => document.getElementById(id);
   const taskId = new URLSearchParams(location.search).get("id");
-  let task = null, samples = [], taskLeaders = [], allLeaders = [];
+  let task = null, samples = [], taskLeaders = [], allLeaders = [], scripts = [];
 
   const GENDER_AR = { male: "ولاد", female: "بنات" };
   const BRACKET_ROWS = [["child", "أطفال"], ["adult", "بالغين"], ["elderly", "كبار السن"]];
@@ -151,11 +187,11 @@
     if (!taskId) { $("loading-text").textContent = "مفيش مهمة محددة. ارجع للوحة التحكم واختار المهمة."; return; }
     try {
       const [detail, leaders] = await Promise.all([NMStudio.apiGetTask(taskId), NMStudio.apiGetLeaders()]);
-      task = detail.task; samples = detail.samples || []; taskLeaders = detail.leaders || [];
+      task = detail.task; samples = detail.samples || []; taskLeaders = detail.leaders || []; scripts = detail.scripts || [];
       allLeaders = (leaders || []).filter((l) => l.is_active !== false);
       $("loading-card").classList.add("hidden");
       $("edit-root").classList.remove("hidden");
-      fillBasics(); renderQuotaInputs(); renderLeaders(); renderSamples();
+      fillBasics(); renderQuotaInputs(); renderLeaders(); renderSamples(); renderSystem();
     } catch (err) {
       $("loading-text").textContent = err.message;
     }
@@ -189,7 +225,7 @@
 
   // ------------------------------------------------------------- 2) quotas
   function slotOf(gender, bracket) {
-    return (task.slots || []).find((s) => s.gender === gender && (s.ageBracket || "") === bracket) || null;
+    return (task.slots || []).find((s) => !s.synthetic && s.gender === gender && (s.ageBracket || "") === bracket) || null;
   }
   function renderQuotaInputs() {
     const box = $("quota-inputs");
@@ -310,6 +346,61 @@
     try { samples = (await NMStudio.apiUploadBulkSampleAudio(taskId, ids, file)).samples; renderSamples(); }
     catch (err) { showMsg("sample-error", err.message); }
     finally { btn.textContent = "🎵 رفع سامبل مشترك للمحدّد"; this.value = ""; updateBulkCount(); }
+  });
+
+  // ------------------------------------------------------------- 3b/3c) system, scripts, codes
+  const isPerPerson = () => task.script_mode === "per_person";
+  const isCodes = () => task.identity_mode === "codes";
+  function renderSystem() {
+    const pill = (t) => `<span class="studio-pill status-approved">${t}</span>`;
+    $("system-line").innerHTML = pill(isPerPerson() ? "سكريبت مختلف لكل متسجّل" : "سكريبت واحد لكل المتسجّلين") + pill(isCodes() ? "أكواد" : "أسامي مستعارة") + (task.direct ? pill("نشر مباشر من غير ليدر") : "");
+    $("leaders-card").classList.toggle("hidden", !!task.direct);
+    $("samples-card").classList.toggle("hidden", isPerPerson());
+    $("scripts-card").classList.toggle("hidden", !isPerPerson());
+    $("codes-card").classList.toggle("hidden", !isCodes());
+    if (isPerPerson()) {
+      $("scripts-summary").innerHTML = `<span>المتاح من السكريبتات:</span> <span dir="ltr">${task.scripts_left} / ${task.scripts_total}</span>`;
+      $("scripts-list").innerHTML = scripts.map((s) => `<div style="display:flex; align-items:center; gap:10px; padding:6px 4px; border-bottom:1px solid var(--studio-border);">
+          <span dir="ltr" style="flex:1;">${escapeHtml(s.filename || "")}</span>
+          <span dir="ltr">${s.sentence_count}</span><span>جملة</span>
+          ${s.taken ? `<span class="studio-pill status-rejected">محجوز</span>` : `<span class="studio-pill status-approved">متاح</span>`}</div>`).join("");
+    }
+    if (isCodes()) {
+      $("codes-summary").innerHTML = `<span>أكواد الولاد المتاحة:</span> <span dir="ltr">${task.codes_left.male} / ${task.codes_total.male}</span> • <span>أكواد البنات المتاحة:</span> <span dir="ltr">${task.codes_left.female} / ${task.codes_total.female}</span>`;
+    }
+  }
+  async function reloadTask() {
+    const d = await NMStudio.apiGetTask(taskId);
+    task = d.task; scripts = d.scripts || []; samples = d.samples || [];
+    $("quota-inputs").innerHTML = ""; renderQuotaInputs(); renderSystem();
+  }
+  $("add-scripts-btn").addEventListener("click", async function () {
+    clearMsgs("scripts-error", "scripts-success");
+    const files = $("add-scripts-files").files;
+    if (!files.length) return showMsg("scripts-error", "اختار ملفات txt الأول.");
+    await busy(this, "جاري الرفع...", async () => {
+      try {
+        const r = await NMStudio.apiUploadScripts(taskId, files, "append");
+        $("add-scripts-files").value = "";
+        await reloadTask();
+        $("scripts-success").innerHTML = `<span>✓ اتضاف عدد السكريبتات:</span> <span dir="ltr">${r.added}</span>`;
+        $("scripts-success").style.display = "block"; setTimeout(() => clearMsgs("scripts-success"), 3500);
+      } catch (err) { showMsg("scripts-error", err.message); }
+    });
+  });
+  $("add-codes-btn").addEventListener("click", async function () {
+    clearMsgs("codes-error", "codes-success");
+    const male = $("add-codes-male").files[0], female = $("add-codes-female").files[0];
+    if (!male && !female) return showMsg("codes-error", "اختار قايمة أكواد واحدة على الأقل.");
+    await busy(this, "جاري الرفع...", async () => {
+      try {
+        const r = await NMStudio.apiUploadCodes(taskId, { male, female }, "append");
+        $("add-codes-male").value = ""; $("add-codes-female").value = "";
+        await reloadTask();
+        $("codes-success").innerHTML = `<span>✓ اتحدّثت الأكواد.</span>` + (r.skipped ? ` <span>مكرر واتجاهل:</span> <span dir="ltr">${r.skipped}</span>` : "");
+        $("codes-success").style.display = "block"; setTimeout(() => clearMsgs("codes-success"), 3500);
+      } catch (err) { showMsg("codes-error", err.message); }
+    });
   });
 
   load();

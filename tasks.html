@@ -106,6 +106,7 @@
     overlay.classList.remove("hidden");
     try {
       const detail = await NMTalent.getTaskDetail(taskId);
+      if (detail.task.direct) { goToSetup(taskId, null); return; }      // direct task: no leader to pick
       if (!detail.leaders.length) {
         leadersBox.innerHTML = `<p class="studio-hint mb-0">مفيش أكواد ليدرز متاحة للمهمة دي دلوقتي.</p>`;
         return;
@@ -125,7 +126,7 @@
   }
 
   function goToSetup(taskId, leaderId) {
-    const setupUrl = `talent-setup.html?taskId=${taskId}&leaderId=${leaderId}`;
+    const setupUrl = `talent-setup.html?taskId=${taskId}` + (leaderId ? `&leaderId=${leaderId}` : "");
     if (!NMTalent.authToken()) {
       location.href = `talent-login.html?return=${encodeURIComponent(setupUrl)}`;
       return;

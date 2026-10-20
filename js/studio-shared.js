@@ -55,15 +55,6 @@
     return data;
   }
 
-  async function leaderSignup(name, email, password) {
-    const data = await apiFetch("/api/studio/auth/leader/signup", {
-      method: "POST",
-      body: JSON.stringify({ name, email, password }),
-    });
-    saveSession(data.token, data.studioRole, data.user);
-    return data;
-  }
-
   async function refreshMe() {
     const data = await apiFetch("/api/studio/auth/me");
     localStorage.setItem("studio_user", JSON.stringify(data.user));
@@ -101,6 +92,29 @@
     return data;
   }
 
+  // several files in one request (v3): scripts = one .txt per talent, codes = a boys list and a girls list
+  async function apiUploadMany(path, fields, extraFields) {
+    const form = new FormData();
+    fields.forEach(([name, file]) => form.append(name, file));
+    Object.entries(extraFields || {}).forEach(([k, v]) => form.append(k, v));
+    const headers = {};
+    const token = authToken();
+    if (token) headers["Authorization"] = `Bearer ${token}`;
+    const res = await safeFetch(`${API_BASE_URL}${path}`, { method: "POST", headers, body: form });
+    let data = null;
+    try { data = await res.json(); } catch (_) {}
+    if (!res.ok) throw new Error((data && data.error) || "تعذر رفع الملفات");
+    return data;
+  }
+  function apiUploadScripts(taskId, files, mode) {
+    return apiUploadMany(`/api/studio/headleader/tasks/${taskId}/scripts`, Array.from(files).map((f) => ["files", f]), { mode: mode || "append" });
+  }
+  function apiUploadCodes(taskId, lists, mode) {
+    const fields = [];
+    if (lists.male) fields.push(["male", lists.male]);
+    if (lists.female) fields.push(["female", lists.female]);
+    return apiUploadMany(`/api/studio/headleader/tasks/${taskId}/codes`, fields, { mode: mode || "replace" });
+  }
   function apiUploadFakeNames(taskId, file) {
     return apiUploadFile(`/api/studio/headleader/tasks/${taskId}/fake-names`, file);
   }
@@ -243,9 +257,9 @@
   }
 
   window.NMStudio = {
-    authToken, currentUser, currentRole, login, leaderSignup, logout,
+    authToken, currentUser, currentRole, login, logout,
     apiFetch, refreshMe, requireStudioRole,
-    apiCreateTask, apiUploadScript, apiUploadFakeNames, apiUploadSampleAudio, apiUploadBulkSampleAudio, apiPublishTask,
+    apiCreateTask, apiUploadScript, apiUploadScripts, apiUploadCodes, apiUploadFakeNames, apiUploadSampleAudio, apiUploadBulkSampleAudio, apiPublishTask,
     apiGetMyTasks, apiGetTaskDetail, apiGetLeaders, apiCreateQaReviewer, apiGetQaReviewers,
     apiGetPendingReviews, apiGetReviewDetail, apiApproveSession, apiRejectAllSession,
     apiSubmitReview, qaFetchSampleAudioUrl,

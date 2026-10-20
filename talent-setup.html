@@ -55,7 +55,7 @@
 
     <!-- step 3: fake name -->
     <div id="tab-fake-name" class="hidden">
-      <p class="studio-subtitle">اختار اسم مستعار (مش هيظهر حد تاني بيه)</p>
+      <p class="studio-subtitle" id="name-subtitle">اختار اسم مستعار (مش هيظهر حد تاني بيه)</p>
       <select id="fake-name-select" style="margin-bottom:14px;"></select>
       <button type="button" class="studio-btn studio-btn-primary studio-btn-block" onclick="confirmFakeName()">التالي</button>
     </div>
@@ -77,7 +77,7 @@
   const params = new URLSearchParams(location.search);
   const taskId = params.get("taskId");
   const leaderId = params.get("leaderId");
-  if (!taskId || !leaderId) location.href = "tasks.html";
+  if (!taskId) location.href = "tasks.html";          // leaderId is missing on purpose for direct tasks (checked once the task loads)
   NMTalent.requireLogin(location.pathname + location.search);
 
   const answers = { gender: null, ageBracket: null, fakeName: null, age: null };
@@ -129,10 +129,12 @@
   async function loadFakeNames() {
     const select = document.getElementById("fake-name-select");
     select.innerHTML = `<option>جاري التحميل...</option>`;
+    const useCodes = task && task.identity_mode === "codes";
+    document.getElementById("name-subtitle").textContent = useCodes ? "اختار الكود بتاعك" : "اختار اسم مستعار (مش هيظهر حد تاني بيه)";
     try {
-      const names = await NMTalent.getAvailableFakeNames(taskId);
+      const names = await NMTalent.getAvailableFakeNames(taskId, answers.gender);
       if (!names.length) {
-        select.innerHTML = `<option value="">مفيش أسامي متاحة دلوقتي</option>`;
+        select.innerHTML = useCodes ? `<option value="">مفيش أكواد متاحة دلوقتي</option>` : `<option value="">مفيش أسامي متاحة دلوقتي</option>`;
         return;
       }
       select.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join("");
@@ -157,7 +159,7 @@
     btn.disabled = true; btn.textContent = "جاري البدء...";
     try {
       const { session } = await NMTalent.createSession({
-        taskId, leaderId,
+        taskId, ...(leaderId ? { leaderId } : {}),
         gender: answers.gender,
         ageBracket: answers.ageBracket,
         age: answers.age,
@@ -169,7 +171,7 @@
       errorBox.textContent = err.message;
       errorBox.style.display = "block";
       btn.disabled = false; btn.textContent = "🎙️ ابدأ التسجيل";
-      if (err.message.includes("الاسم")) { stepIndex = STEPS.indexOf("tab-fake-name"); showStep(stepIndex); loadFakeNames(); }
+      if (err.message.includes("الاسم") || err.message.includes("الكود")) { stepIndex = STEPS.indexOf("tab-fake-name"); showStep(stepIndex); loadFakeNames(); }
       // somebody took the last place a second before: reload the places and start again from the first step
       if (err.message.includes("الاكتفاء") || err.message.includes("مش مطلوبين")) { refreshTask().then(() => { stepIndex = 0; showStep(0); }); }
     }
@@ -179,6 +181,7 @@
     try {
       const detail = await NMTalent.getTaskDetail(taskId);
       task = detail.task;
+      if (!task.direct && !leaderId) { location.href = "tasks.html"; return; }   // a normal task needs the leader's code
       document.getElementById("task-title").textContent = task.title;
     } catch (_) {
       document.getElementById("task-title").textContent = "بياناتك";
