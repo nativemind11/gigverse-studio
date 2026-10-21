@@ -906,5 +906,11 @@ window.STUDIO_I18N = { en: {
   "تعذر مسح المهمة — لسه موجودة زي ما هي. جرّب تاني.": "Couldn't delete the task — it is still there as it was. Try again.",
   "تعذر مسح ملفات جوجل درايف (ممكن تتمسح يدويًا)": "Couldn't delete the Google Drive files (you can delete them by hand)",
   "تعذر مسح ملفات R2": "Couldn't delete the R2 files",
-  "ملفات R2 مخلصتش كلها": "Not all R2 files were deleted"
+  "ملفات R2 مخلصتش كلها": "Not all R2 files were deleted",
+  "نشر المهمة": "Publish task",
+  "المهمة دلوقتي مسودة ومش ظاهرة للمتسجّلين. لما تخلّص تعديلاتك دوس نشر.": "The task is currently a draft and not visible to talents. When you finish editing, press Publish.",
+  "✓ المهمة منشورة وظاهرة للمتسجّلين. تعديلاتك بتتطبّق على طول.": "✓ The task is published and visible to talents. Your edits apply immediately.",
+  "🚀 نشر المهمة للمتسجّلين": "🚀 Publish task to talents",
+  "الرجوع للوحة التحكم": "Back to dashboard",
+  "✓ اتنشرت المهمة وظهرت للمتسجّلين": "✓ Task published and now visible to talents"
 } };

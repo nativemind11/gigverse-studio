@@ -244,6 +244,16 @@
       </div>
     </div>
 
+    <!-- 5) publish -->
+    <div class="studio-card" id="publish-card">
+      <h3 style="margin-top:0;">نشر المهمة</h3>
+      <p class="studio-hint" style="margin-top:0;" id="publish-status"></p>
+      <p class="studio-error" id="publish-error"></p>
+      <p class="studio-success" id="publish-success"></p>
+      <button type="button" class="studio-btn studio-btn-primary studio-btn-block" id="publish-btn">🚀 نشر المهمة للمتسجّلين</button>
+      <a href="dashboard-head-leader.html" class="studio-btn studio-btn-secondary studio-btn-block" style="margin-top:10px;">الرجوع للوحة التحكم</a>
+    </div>
+
   </div>
 </main>
 
@@ -450,6 +460,7 @@
   const isPerPerson = () => task.script_mode === "per_person";
   const isCodes = () => task.identity_mode === "codes";
   function renderSystem() {
+    renderPublish();
     const pill = (t) => `<span class="studio-pill status-approved">${t}</span>`;
     $("system-line").innerHTML = pill(isPerPerson() ? "سكريبت مختلف لكل متسجّل" : "سكريبت واحد لكل المتسجّلين") + pill(isCodes() ? "أكواد" : "أسامي مستعارة") + (task.direct ? pill("نشر مباشر من غير ليدر") : "");
     $("leaders-card").classList.toggle("hidden", !!task.direct);
@@ -585,6 +596,26 @@
         const d = await NMStudio.apiGetTask(taskId); task = d.task; renderSystem();
         flashOk("names-success", `✓ اتحدّثت القايمة (${r.nameCount} اسم)`);
       } catch (err) { showMsg("names-error", err.message); }
+    });
+  });
+
+  // ------------------------------------------------------------- publish
+  function renderPublish() {
+    const draft = task.status !== "published";
+    $("publish-status").textContent = draft
+      ? "المهمة دلوقتي مسودة ومش ظاهرة للمتسجّلين. لما تخلّص تعديلاتك دوس نشر."
+      : "✓ المهمة منشورة وظاهرة للمتسجّلين. تعديلاتك بتتطبّق على طول.";
+    $("publish-btn").classList.toggle("hidden", !draft);
+  }
+  $("publish-btn").addEventListener("click", async function () {
+    clearMsgs("publish-error", "publish-success");
+    await busy(this, "جاري النشر...", async () => {
+      try {
+        await NMStudio.apiPublishTask(taskId);
+        const d = await NMStudio.apiGetTask(taskId); task = d.task;
+        renderSystem();
+        flashOk("publish-success", "✓ اتنشرت المهمة وظهرت للمتسجّلين");
+      } catch (err) { showMsg("publish-error", err.message); }   // e.g. no sentences / names / leader yet
     });
   });
 
