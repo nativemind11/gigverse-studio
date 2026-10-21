@@ -135,7 +135,7 @@
       wrap.innerHTML = `
         <div class="studio-table-wrap">
           <table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>المطلوب</th><th>مراجعو QA</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th><th>تعديل</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>الجمل</th><th>الليدرز</th><th>تسليمات</th><th>المطلوب</th><th>مراجعو QA</th><th>ذكور معتمدة</th><th>إناث معتمدة</th><th>المساحة</th><th>إجراءات</th></tr></thead>
             <tbody>
               ${tasks.map(t => `
                 <tr>
@@ -149,7 +149,10 @@
                   <td>${t.approved_male_count}</td>
                   <td>${t.approved_female_count}</td>
                   <td>${storageCell(t)}</td>
-                  <td><a class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem; white-space:nowrap;" href="edit-task.html?id=${encodeURIComponent(t.id)}">✏️ تعديل</a></td>
+                  <td><div style="display:flex; gap:6px; flex-wrap:nowrap;">
+                    <a class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem; white-space:nowrap;" href="edit-task.html?id=${encodeURIComponent(t.id)}">✏️ تعديل</a>
+                    <button type="button" class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem; white-space:nowrap; color:var(--studio-danger); border-color:currentColor;" data-delete="${t.id}" data-title="${escapeHtml(t.title)}">🗑️ حذف نهائي</button>
+                  </div></td>
                 </tr>`).join("")}
             </tbody>
           </table>
@@ -202,6 +205,42 @@
     }
     o.innerHTML = `<div class="studio-card" style="max-width:480px; width:100%; max-height:90vh; overflow:auto; margin:0;">${html}</div>`;
     return o;
+  }
+
+
+  // ---- delete a task for good --------------------------------------------
+  document.addEventListener("click", (e) => {
+    const b = e.target.closest && e.target.closest("button[data-delete]");
+    if (b) openDelete(b.dataset.delete, b.dataset.title);
+  });
+  function openDelete(taskId, title) {
+    showFinalize(`<h3 style="margin-top:0;">🗑️ حذف المهمة نهائيًا</h3>
+      <p class="studio-subtitle" style="margin-top:-6px;"><strong>${escapeHtml(title)}</strong></p>
+      <p class="studio-error" style="display:block;">الحذف مفيهوش رجوع. هيتمسح كل حاجة عن المهمة دي: الجمل والسكريبتات، تسجيلات المتسجّلين، مراجعات الـ QA، الفيدباك، وسجل التسليم، وكمان ملفاتها من جوجل درايف.</p>
+      <div class="studio-field"><label for="del-confirm">اكتب اسم المهمة بالظبط عشان تأكّد</label><input type="text" id="del-confirm" autocomplete="off"></div>
+      <p class="studio-error" id="del-error"></p>
+      <div style="display:flex; gap:10px; flex-wrap:wrap;">
+        <button class="studio-btn studio-btn-danger" id="del-go" disabled>احذف نهائيًا</button>
+        <button class="studio-btn studio-btn-secondary" id="del-cancel">إلغاء</button>
+      </div>`);
+    const input = document.getElementById("del-confirm"), go = document.getElementById("del-go");
+    input.addEventListener("input", () => { go.disabled = input.value.trim() !== String(title).trim(); });
+    document.getElementById("del-cancel").onclick = closeFinalize;
+    go.onclick = async () => {
+      go.disabled = true; go.textContent = "جاري الحذف...";
+      try {
+        const r = await NMStudio.apiDeleteTask(taskId, input.value);
+        showFinalize(`<h3 style="margin-top:0;">✅ اتحذفت المهمة</h3>
+          ${r.storageWarning ? `<p class="studio-error" style="display:block;">${escapeHtml(r.storageWarning)}</p>` : ""}
+          <button class="studio-btn studio-btn-primary studio-btn-block" id="del-close">تمام</button>`);
+        document.getElementById("del-close").onclick = closeFinalize;
+        loadTasks();
+      } catch (err) {
+        const box = document.getElementById("del-error");
+        box.textContent = err.message; box.style.display = "block";
+        go.textContent = "احذف نهائيًا"; go.disabled = input.value.trim() !== String(title).trim();
+      }
+    };
   }
 
   async function openFinalize(taskId, title) {

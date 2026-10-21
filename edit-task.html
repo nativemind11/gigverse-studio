@@ -76,9 +76,69 @@
           <label class="fb-check"><input type="checkbox" id="e-ref-audio"> الجمل ليها سامبل صوتي مرجعي</label>
         </div>
       </div>
+      <div class="studio-grid cols-2">
+        <div class="studio-field">
+          <label for="e-difficulty">مستوى الصعوبة</label>
+          <select id="e-difficulty">
+            <option value="easy">سهل</option>
+            <option value="medium">متوسط</option>
+            <option value="hard">صعب</option>
+          </select>
+        </div>
+        <div class="studio-field">
+          <label for="e-sample-rate">معدل العينة (Sample Rate)</label>
+          <select id="e-sample-rate">
+            <option value="16000">16,000 Hz</option>
+            <option value="22050">22,050 Hz</option>
+            <option value="44100">44,100 Hz</option>
+            <option value="48000">48,000 Hz</option>
+          </select>
+        </div>
+      </div>
+      <div class="studio-grid cols-2">
+        <div class="studio-field">
+          <label for="e-bit-depth">عمق البت (Bit Depth)</label>
+          <select id="e-bit-depth"><option value="16">16 bit</option><option value="24">24 bit</option></select>
+        </div>
+        <div class="studio-field">
+          <label for="e-format">الصيغة</label>
+          <select id="e-format"><option value="wav">WAV</option><option value="mp3">MP3</option></select>
+        </div>
+      </div>
+      <div class="studio-field">
+        <label for="e-channels">القناة (Channel)</label>
+        <select id="e-channels"><option value="mono">Mono</option><option value="stereo">Stereo</option></select>
+        <p class="studio-hint">تغيير إعدادات الصوت بيأثر على التسجيلات الجديدة بس.</p>
+      </div>
       <p class="studio-error" id="basic-error"></p>
       <p class="studio-success" id="basic-success"></p>
       <button type="button" class="studio-btn studio-btn-primary" id="basic-save">حفظ الأساسيات</button>
+    </div>
+
+    <!-- 1b) system modes -->
+    <div class="studio-card" id="modes-card">
+      <h3 style="margin-top:0;">نظام المهمة</h3>
+      <p class="studio-hint" style="margin-top:0;" id="modes-note">تغيير النظام بيمسح الجمل أو السكريبتات اللي اترفعت قبل كده، وبيرجّع المهمة مسودة لحد ما ترفعهم من جديد. وده مش متاح بعد ما أي حد يبدأ تسجيل.</p>
+      <div class="studio-grid cols-2">
+        <div class="studio-field" style="margin:0;">
+          <label for="m-script-mode">السكريبت</label>
+          <select id="m-script-mode">
+            <option value="shared">سكريبت واحد لكل المتسجّلين</option>
+            <option value="per_person">سكريبت مختلف لكل متسجّل</option>
+          </select>
+        </div>
+        <div class="studio-field" style="margin:0;">
+          <label for="m-identity-mode">هوية المتسجّل</label>
+          <select id="m-identity-mode">
+            <option value="names">أسامي مستعارة (ملف واحد)</option>
+            <option value="codes">أكواد (قايمة للولاد وقايمة للبنات)</option>
+          </select>
+        </div>
+      </div>
+      <label class="fb-check" style="margin-top:12px;"><input type="checkbox" id="m-direct"> نشر مباشر من غير ليدر</label>
+      <p class="studio-error" id="modes-error"></p>
+      <p class="studio-success" id="modes-success"></p>
+      <button type="button" class="studio-btn studio-btn-secondary" id="modes-save">حفظ النظام</button>
     </div>
 
     <!-- 2) quotas -->
@@ -102,6 +162,34 @@
       </div>
       <p class="studio-error" id="leader-error"></p>
       <p class="studio-success" id="leader-success"></p>
+    </div>
+
+    <!-- 3a) shared sentences file -->
+    <div class="studio-card hidden" id="shared-script-card">
+      <h3 style="margin-top:0;">ملف الجمل</h3>
+      <p class="studio-hint" style="margin-top:0;" id="shared-script-summary"></p>
+      <div class="studio-field">
+        <label for="shared-script-file">استبدال ملف الجمل (.txt — جملة في كل سطر)</label>
+        <input type="file" id="shared-script-file" accept=".txt">
+        <p class="studio-hint">الاستبدال بيمسح الجمل القديمة (والسامبلات اللي عليها)، وبيتقفل أول ما أي حد يبدأ تسجيل.</p>
+      </div>
+      <p class="studio-error" id="shared-script-error"></p>
+      <p class="studio-success" id="shared-script-success"></p>
+      <button type="button" class="studio-btn studio-btn-secondary" id="shared-script-btn">رفع ملف الجمل</button>
+    </div>
+
+    <!-- 3a2) fake names -->
+    <div class="studio-card hidden" id="names-card">
+      <h3 style="margin-top:0;">الأسامي المستعارة</h3>
+      <p class="studio-hint" style="margin-top:0;" id="names-summary"></p>
+      <div class="studio-field">
+        <label for="names-file">استبدال قايمة الأسامي (.txt — اسم في كل سطر)</label>
+        <input type="file" id="names-file" accept=".txt">
+        <p class="studio-hint">الاسم اللي اتحجز بيفضل لصاحبه حتى لو مش في القايمة الجديدة.</p>
+      </div>
+      <p class="studio-error" id="names-error"></p>
+      <p class="studio-success" id="names-success"></p>
+      <button type="button" class="studio-btn studio-btn-secondary" id="names-btn">رفع الأسامي</button>
     </div>
 
     <!-- 3b) per-person scripts -->
@@ -205,6 +293,12 @@
     $("e-rework").value = String(task.rework_hours || 12);
     $("e-ref-audio").checked = task.use_reference_audio !== false;
     $("q-brackets").checked = !!task.use_age_brackets;
+    const rs = task.recording_settings || {};
+    $("e-difficulty").value = task.difficulty || "medium";
+    $("e-sample-rate").value = String(rs.sampleRate || 16000);
+    $("e-bit-depth").value = String(rs.bitDepth || 16);
+    $("e-format").value = rs.format || "wav";
+    $("e-channels").value = rs.channels || "mono";
   }
   $("basic-save").addEventListener("click", async function () {
     clearMsgs("basic-error", "basic-success");
@@ -215,6 +309,8 @@
         task = await NMStudio.apiUpdateTask(taskId, {
           title, instructions: $("e-instructions").value,
           reworkHours: Number($("e-rework").value), useReferenceAudio: $("e-ref-audio").checked,
+          difficulty: $("e-difficulty").value, sampleRate: Number($("e-sample-rate").value), bitDepth: Number($("e-bit-depth").value),
+          format: $("e-format").value, channels: $("e-channels").value,
         });
         $("task-title-h").textContent = task.title;
         renderSamples();
@@ -271,7 +367,8 @@
   function renderLeaders() {
     $("leaders-list").innerHTML = taskLeaders.length
       ? taskLeaders.map((l) => `<div style="display:flex; align-items:center; gap:10px; padding:8px 4px; border-bottom:1px solid var(--studio-border);">
-          <span class="studio-code" style="font-size:0.8rem;">${escapeHtml(l.leader_code)}</span><span>${escapeHtml(l.name)}</span></div>`).join("")
+          <span class="studio-code" style="font-size:0.8rem;">${escapeHtml(l.leader_code)}</span><span style="flex:1;">${escapeHtml(l.name)}</span>
+          <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.75rem;" data-rm-leader="${l.id}">شيل</button></div>`).join("")
       : `<p class="studio-error" style="display:block;">المهمة لسه من غير ليدر.</p>`;
     const have = new Set(taskLeaders.map((l) => l.id));
     const rest = allLeaders.filter((l) => !have.has(l.id));
@@ -306,6 +403,7 @@
           <div style="display:flex; align-items:center; gap:8px;">
             ${s.audio_url ? `<span class="studio-pill status-approved">✓ اترفع</span>` : ""}
             <input type="file" accept="audio/*" class="hidden" data-up="${s.id}">
+            <button type="button" class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem;" data-edit-text="${s.id}">✏️ نص الجملة</button>
             <button type="button" class="studio-btn studio-btn-secondary" style="padding:6px 12px; font-size:0.8rem;" data-pick="${s.id}">🎵 ${s.audio_url ? "استبدال" : "إضافة سامبل"}</button>
           </div>
         </div>
@@ -358,12 +456,19 @@
     $("samples-card").classList.toggle("hidden", isPerPerson());
     $("scripts-card").classList.toggle("hidden", !isPerPerson());
     $("codes-card").classList.toggle("hidden", !isCodes());
+    $("shared-script-card").classList.toggle("hidden", isPerPerson());
+    $("names-card").classList.toggle("hidden", isCodes());
+    $("m-script-mode").value = task.script_mode || "shared";
+    $("m-identity-mode").value = task.identity_mode || "names";
+    $("m-direct").checked = !!task.direct;
+    $("shared-script-summary").innerHTML = `<span>عدد الجمل الحالي:</span> <span dir="ltr">${samples.length}</span>` + (task.script_file_name ? ` • <span dir="ltr">${escapeHtml(task.script_file_name)}</span>` : "");
+    $("names-summary").innerHTML = `<span>عدد الأسامي في القايمة:</span> <span dir="ltr">${(task.fake_names || []).length}</span>`;
     if (isPerPerson()) {
       $("scripts-summary").innerHTML = `<span>المتاح من السكريبتات:</span> <span dir="ltr">${task.scripts_left} / ${task.scripts_total}</span>`;
       $("scripts-list").innerHTML = scripts.map((s) => `<div style="display:flex; align-items:center; gap:10px; padding:6px 4px; border-bottom:1px solid var(--studio-border);">
           <span dir="ltr" style="flex:1;">${escapeHtml(s.filename || "")}</span>
           <span dir="ltr">${s.sentence_count}</span><span>جملة</span>
-          ${s.taken ? `<span class="studio-pill status-rejected">محجوز</span>` : `<span class="studio-pill status-approved">متاح</span>`}</div>`).join("");
+          ${s.taken ? `<span class="studio-pill status-rejected">محجوز</span>` : `<span class="studio-pill status-approved">متاح</span> <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.75rem;" data-rm-script="${s.id}">مسح</button>`}</div>`).join("");
     }
     if (isCodes()) {
       $("codes-summary").innerHTML = `<span>أكواد الولاد المتاحة:</span> <span dir="ltr">${task.codes_left.male} / ${task.codes_total.male}</span> • <span>أكواد البنات المتاحة:</span> <span dir="ltr">${task.codes_left.female} / ${task.codes_total.female}</span>`;
@@ -400,6 +505,86 @@
         $("codes-success").innerHTML = `<span>✓ اتحدّثت الأكواد.</span>` + (r.skipped ? ` <span>مكرر واتجاهل:</span> <span dir="ltr">${r.skipped}</span>` : "");
         $("codes-success").style.display = "block"; setTimeout(() => clearMsgs("codes-success"), 3500);
       } catch (err) { showMsg("codes-error", err.message); }
+    });
+  });
+
+  // ------------------------------------------------------------- new: modes, leaders, sentences, scripts, files
+  $("modes-save").addEventListener("click", async function () {
+    clearMsgs("modes-error", "modes-success");
+    const body = { scriptMode: $("m-script-mode").value, identityMode: $("m-identity-mode").value, direct: $("m-direct").checked };
+    const changed = body.scriptMode !== task.script_mode || body.identityMode !== task.identity_mode || body.direct !== !!task.direct;
+    if (!changed) return showMsg("modes-error", "مفيش تغيير.");
+    if (!confirm("تغيير النظام هيمسح الجمل/السكريبتات اللي اترفعت وهيرجّع المهمة مسودة. متأكد؟")) return;
+    await busy(this, "جاري الحفظ...", async () => {
+      try {
+        task = await NMStudio.apiUpdateTask(taskId, body);
+        const d = await NMStudio.apiGetTask(taskId);
+        task = d.task; samples = d.samples || []; scripts = d.scripts || []; taskLeaders = d.leaders || [];
+        $("quota-inputs").innerHTML = ""; renderQuotaInputs(); renderLeaders(); renderSamples(); renderSystem();
+        flashOk("modes-success", "✓ اتحفظ نظام المهمة — ارفع الجمل/الأكواد من الأقسام اللي تحت وانشر تاني.");
+      } catch (err) { showMsg("modes-error", err.message); }
+    });
+  });
+
+  $("leaders-list").addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("button[data-rm-leader]");
+    if (!b) return;
+    clearMsgs("leader-error", "leader-success");
+    if (!confirm("تشيل الليدر ده من المهمة؟ اللي سجّلوا معاه قبل كده هيفضلوا زي ما هما.")) return;
+    b.disabled = true;
+    try { taskLeaders = (await NMStudio.apiRemoveTaskLeader(taskId, b.dataset.rmLeader)).leaders; flashOk("leader-success", "✓ اتشال الليدر"); }
+    catch (err) { showMsg("leader-error", err.message); }
+    renderLeaders();
+  });
+
+  $("scripts-list").addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("button[data-rm-script]");
+    if (!b) return;
+    clearMsgs("scripts-error");
+    if (!confirm("تمسح السكريبت ده؟")) return;
+    b.disabled = true;
+    try { await NMStudio.apiDeleteScript(taskId, b.dataset.rmScript); await reloadTask(); }
+    catch (err) { showMsg("scripts-error", err.message); b.disabled = false; }
+  });
+
+  $("samples-list").addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("button[data-edit-text]");
+    if (!b) return;
+    clearMsgs("sample-error");
+    const s = samples.find((x) => x.id === b.dataset.editText); if (!s) return;
+    const text = prompt("نص الجملة:", s.sentence_name);
+    if (text == null || !text.trim() || text.trim() === s.sentence_name) return;
+    try { const r = await NMStudio.apiUpdateSample(taskId, s.id, text.trim()); s.sentence_name = r.sentence_name; renderSamples(); }
+    catch (err) { showMsg("sample-error", err.message); }
+  });
+
+  $("shared-script-btn").addEventListener("click", async function () {
+    clearMsgs("shared-script-error", "shared-script-success");
+    const f = $("shared-script-file").files[0];
+    if (!f) return showMsg("shared-script-error", "اختار ملف txt الأول.");
+    if (!confirm("استبدال ملف الجمل هيمسح الجمل القديمة والسامبلات اللي عليها. متأكد؟")) return;
+    await busy(this, "جاري الرفع...", async () => {
+      try {
+        const r = await NMStudio.apiUploadScript(taskId, f);
+        $("shared-script-file").value = "";
+        const d = await NMStudio.apiGetTask(taskId); task = d.task; samples = d.samples || [];
+        renderSamples(); renderSystem();
+        flashOk("shared-script-success", `✓ اتحدّث الملف (${r.sampleCount} جملة)`);
+      } catch (err) { showMsg("shared-script-error", err.message); }
+    });
+  });
+
+  $("names-btn").addEventListener("click", async function () {
+    clearMsgs("names-error", "names-success");
+    const f = $("names-file").files[0];
+    if (!f) return showMsg("names-error", "اختار ملف txt الأول.");
+    await busy(this, "جاري الرفع...", async () => {
+      try {
+        const r = await NMStudio.apiUploadFakeNames(taskId, f);
+        $("names-file").value = "";
+        const d = await NMStudio.apiGetTask(taskId); task = d.task; renderSystem();
+        flashOk("names-success", `✓ اتحدّثت القايمة (${r.nameCount} اسم)`);
+      } catch (err) { showMsg("names-error", err.message); }
     });
   });
 

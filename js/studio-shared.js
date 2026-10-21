@@ -199,6 +199,10 @@
   function apiUpdateTask(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`, J("PATCH", body)); }
   function apiUpdateQuotas(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/quotas`, J("PUT", body)); }
   function apiAddTaskLeader(id, leaderId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/leaders`, J("POST", { leaderId })); }
+  function apiDeleteTask(id, confirm) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`, J("DELETE", { confirm })); }
+  function apiRemoveTaskLeader(id, leaderId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/leaders/${encodeURIComponent(leaderId)}`, { method: "DELETE" }); }
+  function apiUpdateSample(id, sampleId, sentenceName) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/samples/${encodeURIComponent(sampleId)}`, J("PATCH", { sentenceName })); }
+  function apiDeleteScript(id, scriptId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/scripts/${encodeURIComponent(scriptId)}`, { method: "DELETE" }); }
   function apiCreateLeader(body) { return apiFetch("/api/studio/headleader/leaders", J("POST", body)); }
   function apiUpdateLeader(id, body) { return apiFetch(`/api/studio/headleader/leaders/${encodeURIComponent(id)}`, J("PATCH", body)); }
   function apiQaStats() { return apiFetch("/api/studio/headleader/qa-stats"); }
@@ -264,7 +268,7 @@
     apiGetPendingReviews, apiGetReviewDetail, apiApproveSession, apiRejectAllSession,
     apiSubmitReview, qaFetchSampleAudioUrl,
     apiFinalizeInfo, apiFinalizeRun, apiLeaderOverview, apiDriveStatus, apiDriveConnectUrl,
-    apiGetTask, apiUpdateTask, apiUpdateQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
+    apiGetTask, apiUpdateTask, apiDeleteTask, apiRemoveTaskLeader, apiUpdateSample, apiDeleteScript, apiUpdateQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
     apiGetPendingDelivery, apiGetDeliveredBatches, openBatchZip, apiGetStorage, apiMarkDownloaded, apiPurgeStorage, apiCollectGroup, downloadGroupSheet, downloadBatchSheet,
     apiFeedbackParse, apiFeedbackPreview, apiFeedbackApply, apiFeedbackItems, apiMyFeedback, timeLeft,
   };
