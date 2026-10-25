@@ -115,7 +115,12 @@
       const wanted = (new URLSearchParams(location.search).get("leader") || "").trim().toUpperCase();
       const match = wanted && detail.leaders.find(l => String(l.leader_code).toUpperCase() === wanted);
       if (match) { goToSetup(taskId, match.id); return; }
-      leadersBox.innerHTML = detail.leaders.map(l => `
+      // v4: a leader whose quota is used up (every boys / girls slot full or 0) is shown as full, not clickable
+      const leaderFull = (id) => { const ls = detail.leaderSlots && detail.leaderSlots[id]; return !!(ls && ls.limited && ls.slots.every(x => x.max === 0 || x.remaining <= 0)); };
+      leadersBox.innerHTML = detail.leaders.map(l => leaderFull(l.id) ? `
+        <button type="button" class="studio-btn studio-btn-secondary studio-btn-block" style="margin-bottom:8px; justify-content:flex-start;" disabled>
+          <span class="studio-code">${l.leader_code}</span> <small><span>تم الاكتفاء</span></small>
+        </button>` : `
         <button type="button" class="studio-btn studio-btn-secondary studio-btn-block" style="margin-bottom:8px; justify-content:flex-start;"
           onclick="goToSetup('${taskId}', '${l.id}')">
           <span class="studio-code">${l.leader_code}</span>

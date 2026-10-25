@@ -198,6 +198,8 @@
   function apiGetTask(id) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`); }
   function apiUpdateTask(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`, J("PATCH", body)); }
   function apiUpdateQuotas(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/quotas`, J("PUT", body)); }
+  // v4: how many boys / girls EACH leader may bring. body: { leaderQuotas: [{ leaderId, quotas: [{ gender, ageBracket, max }] }], useAgeBrackets? }
+  function apiUpdateLeaderQuotas(id, body) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/leader-quotas`, J("PUT", body)); }
   function apiAddTaskLeader(id, leaderId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/leaders`, J("POST", { leaderId })); }
   function apiDeleteTask(id, confirm) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}`, J("DELETE", { confirm })); }
   function apiRemoveTaskLeader(id, leaderId) { return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(id)}/leaders/${encodeURIComponent(leaderId)}`, { method: "DELETE" }); }
@@ -268,7 +270,7 @@
     apiGetPendingReviews, apiGetReviewDetail, apiApproveSession, apiRejectAllSession,
     apiSubmitReview, qaFetchSampleAudioUrl,
     apiFinalizeInfo, apiFinalizeRun, apiLeaderOverview, apiDriveStatus, apiDriveConnectUrl,
-    apiGetTask, apiUpdateTask, apiDeleteTask, apiRemoveTaskLeader, apiUpdateSample, apiDeleteScript, apiUpdateQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
+    apiGetTask, apiUpdateTask, apiDeleteTask, apiRemoveTaskLeader, apiUpdateSample, apiDeleteScript, apiUpdateQuotas, apiUpdateLeaderQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
     apiGetPendingDelivery, apiGetDeliveredBatches, openBatchZip, apiGetStorage, apiMarkDownloaded, apiPurgeStorage, apiCollectGroup, downloadGroupSheet, downloadBatchSheet,
     apiFeedbackParse, apiFeedbackPreview, apiFeedbackApply, apiFeedbackItems, apiMyFeedback, timeLeft,
   };

@@ -181,6 +181,10 @@
     try {
       const detail = await NMTalent.getTaskDetail(taskId);
       task = detail.task;
+      // v4: when the task limits how many each leader brings, show the places left under THIS leader's code
+      // (the task's own total still applies on the server). Tasks without it behave exactly as before.
+      const mine = detail.leaderSlots && leaderId && detail.leaderSlots[leaderId];
+      if (mine && mine.limited) task = { ...task, limited: true, slots: mine.slots };
       if (!task.direct && !leaderId) { location.href = "tasks.html"; return; }   // a normal task needs the leader's code
       document.getElementById("task-title").textContent = task.title;
     } catch (_) {

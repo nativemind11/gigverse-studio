@@ -85,7 +85,9 @@
       <h3 style="margin:0 0 4px;">العدد المطلوب</h3>
       <p class="studio-hint" style="margin:0 0 12px;">كام ولد وكام بنت المهمة دي محتاجاهم. لما العدد يخلص بيظهر "تم الاكتفاء". لو سبتهم كلهم 0 تبقى المهمة من غير حد.</p>
       <label class="fb-check" style="margin-bottom:10px;"><input type="checkbox" id="t-brackets"> تفعيل الفئات العمرية (أطفال / بالغين / كبار السن) وتحديد عدد لكل فئة</label>
+      <label class="fb-check" id="per-leader-toggle" style="margin-bottom:10px;"><input type="checkbox" id="t-per-leader"> تحديد العدد لكل ليدر على حدة (ولاد وبنات لكل ليدر)</label>
       <div id="quota-inputs"></div>
+      <p class="studio-hint hidden" id="per-leader-total-hint" style="margin:0;">العدد الإجمالي للمهمة = مجموع الأعداد اللي هتحددها لكل ليدر تحت (في خانة "حصة كل ليدر").</p>
     </div>
 
     <div class="studio-grid cols-2">
@@ -147,6 +149,12 @@
         <p class="studio-hint">جاري تحميل الليدرز...</p>
       </div>
       <p class="studio-hint">علّم على كل ليدر عايز يشتغل على المهمة دي. المهمة محتاجة ليدر واحد على الأقل عشان تتنشر.</p>
+    </div>
+
+    <div class="studio-card hidden" id="per-leader-card" style="background:var(--studio-surface-2); padding:14px; margin-bottom:18px;">
+      <h3 style="margin:0 0 4px;">حصة كل ليدر</h3>
+      <p class="studio-hint" style="margin:0 0 12px;">اكتب لكل ليدر كام ولد وكام بنت (وكل فئة عمرية لو مفعّلة) يقدر يجيبهم. لو ليدر وصل لعدده، المتسجّلين اللي بيدخلوا بكوده هيشوفوا "تم الاكتفاء" لحد ما ترفع عدده. الصفر معناه إن النوع ده مش مطلوب من الليدر ده.</p>
+      <div id="leader-quota-inputs"></div>
     </div>
 
     <p class="studio-error" id="step1-error"></p>
@@ -243,8 +251,10 @@
 </main>
 
 <script src="js/studio-shared.js"></script>
+<script src="js/studio-hours.js"></script>
 <script>
   const user = NMStudio.requireStudioRole("head_leader");
+  StudioHours.mount(document.getElementById("t-rework"), { value: 12 });   // 12 / 24 / 36 / 48 / 72 or any number of hours
   document.getElementById("logout-link").addEventListener("click", (e) => {
     e.preventDefault(); NMStudio.logout(); location.href = "login.html";
   });
@@ -269,6 +279,8 @@
     const perPerson = document.getElementById("t-script-mode").value === "per_person";
     document.getElementById("leaders-field").classList.toggle("hidden", direct);
     document.getElementById("ref-audio-field").classList.toggle("hidden", perPerson);
+    document.getElementById("per-leader-toggle").classList.toggle("hidden", direct);   // a direct task has no leaders
+    renderLeaderQuotaInputs();
   }
   ["t-direct", "t-script-mode"].forEach((id) => document.getElementById(id).addEventListener("change", syncModes));
 
@@ -386,9 +398,50 @@
     });
     return rows.some(r => r.max > 0) ? rows : [];          // every box 0 -> no limit
   }
+  // ---- quota PER LEADER (v4): one block per ticked leader, boys / girls (or per age bracket)
+  const perLeaderOn = () => document.getElementById("t-per-leader").checked && !document.getElementById("t-direct").checked;
+  function renderLeaderQuotaInputs() {
+    const on = perLeaderOn();
+    document.getElementById("per-leader-card").classList.toggle("hidden", !on);
+    document.getElementById("quota-inputs").classList.toggle("hidden", on);          // the total becomes the sum of the leaders
+    document.getElementById("per-leader-total-hint").classList.toggle("hidden", !on);
+    const box = document.getElementById("leader-quota-inputs");
+    if (!on) return;
+    const keep = {}; box.querySelectorAll("input").forEach(i => { keep[i.closest("[data-leader]").dataset.leader + "#" + i.dataset.k] = i.value; });
+    const ticked = Array.from(document.querySelectorAll(".leader-checkbox:checked")).map(c => c.value);
+    const leaders = leadersCache.filter(l => ticked.includes(l.id));
+    if (!leaders.length) { box.innerHTML = `<p class="studio-hint mb-0">علّم على ليدر واحد على الأقل من القايمة اللي فوق وهيظهر هنا عدده.</p>`; return; }
+    const brackets = document.getElementById("t-brackets").checked;
+    const val = (lid, k) => (lid + "#" + k in keep ? keep[lid + "#" + k] : 0);
+    box.innerHTML = leaders.map(l => {
+      const head = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><span class="studio-code" style="font-size:0.8rem;">${escapeHtml(l.leader_code)}</span><strong>${escapeHtml(l.name)}</strong></div>`;
+      const body = brackets
+        ? `<div class="studio-table-wrap"><table class="studio-table"><thead><tr><th></th><th>ولاد</th><th>بنات</th></tr></thead><tbody>` +
+          BRACKET_ROWS.map(([b, label]) => `<tr><td>${label}</td>
+            <td><input type="number" min="0" data-k="male|${b}" value="${val(l.id, "male|" + b)}" style="max-width:110px;"></td>
+            <td><input type="number" min="0" data-k="female|${b}" value="${val(l.id, "female|" + b)}" style="max-width:110px;"></td></tr>`).join("") + `</tbody></table></div>`
+        : `<div class="studio-grid cols-2">
+            <div class="studio-field" style="margin:0;"><label>عدد الأولاد</label><input type="number" min="0" data-k="male|" value="${val(l.id, "male|")}"></div>
+            <div class="studio-field" style="margin:0;"><label>عدد البنات</label><input type="number" min="0" data-k="female|" value="${val(l.id, "female|")}"></div></div>`;
+      return `<div data-leader="${l.id}" style="padding:10px 0; border-bottom:1px solid var(--studio-border);">${head}${body}</div>`;
+    }).join("");
+  }
+  function collectLeaderQuotas() {
+    return Array.from(document.querySelectorAll("#leader-quota-inputs [data-leader]")).map(block => ({
+      leaderId: block.dataset.leader,
+      quotas: Array.from(block.querySelectorAll("input")).map(i => {
+        const [gender, ageBracket] = i.dataset.k.split("|");
+        return { gender, ageBracket, max: Number(i.value) || 0 };
+      }),
+    }));
+  }
+  document.getElementById("t-per-leader").addEventListener("change", renderLeaderQuotaInputs);
+  document.getElementById("t-brackets").addEventListener("change", renderLeaderQuotaInputs);
+  document.getElementById("leaders-picker").addEventListener("change", (e) => { if (e.target.classList.contains("leader-checkbox")) renderLeaderQuotaInputs(); });
+
   const GENDER_AR = { male: "ولاد", female: "بنات" };
   const BRACKET_AR = { child: "أطفال", adult: "بالغين", elderly: "كبار السن" };
-  let leaderCount = 0, leadersCache = [];
+  let leaderCount = 0, leadersCache = [], leaderQuotaSummary = [];
 
   document.getElementById("step1-btn").addEventListener("click", async () => {
     const errorBox = document.getElementById("step1-error");
@@ -399,6 +452,21 @@
       errorBox.textContent = "اكتب اسم المهمة.";
       errorBox.style.display = "block";
       return;
+    }
+    const reworkHours = StudioHours.get(document.getElementById("t-rework"));
+    if (!StudioHours.valid(reworkHours)) {
+      errorBox.textContent = `اكتب مهلة الإعادة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`;
+      errorBox.style.display = "block";
+      return;
+    }
+    const leaderQuotas = perLeaderOn() ? collectLeaderQuotas() : null;
+    if (leaderQuotas) {
+      if (!leaderIds.length) { errorBox.textContent = "علّم على ليدر واحد على الأقل عشان تحدد حصته."; errorBox.style.display = "block"; return; }
+      if (!leaderQuotas.some(l => l.quotas.some(q => q.max > 0))) {
+        errorBox.textContent = "اكتب عدد أكبر من صفر لليدر واحد على الأقل، أو شيل خيار \"لكل ليدر على حدة\".";
+        errorBox.style.display = "block";
+        return;
+      }
     }
     const useAgeBrackets = document.getElementById("t-brackets").checked;
     const scriptMode = document.getElementById("t-script-mode").value;
@@ -411,9 +479,10 @@
       createdTask = await NMStudio.apiCreateTask({
         title,
         instructions: document.getElementById("t-instructions").value,
-        reworkHours: Number(document.getElementById("t-rework").value),
+        reworkHours,
         useAgeBrackets, useReferenceAudio, scriptMode, identityMode, direct,
         quotas: collectQuotas(),
+        ...(leaderQuotas ? { leaderQuotas } : {}),
         sampleRate: document.getElementById("t-sample-rate").value,
         bitDepth: document.getElementById("t-bit-depth").value,
         format: document.getElementById("t-format").value,
@@ -421,6 +490,7 @@
         leaderIds: direct ? [] : leaderIds,
       });
       leaderCount = direct ? 0 : leaderIds.length;
+      leaderQuotaSummary = leaderQuotas ? leaderQuotas.map(l => ({ ...l, code: (leadersCache.find(x => x.id === l.leaderId) || {}).leader_code || "" })) : [];
       document.getElementById("ref-audio-section").classList.toggle("hidden", !useReferenceAudio);
       document.getElementById("script-shared-box").classList.toggle("hidden", scriptMode === "per_person");
       document.getElementById("script-multi-box").classList.toggle("hidden", scriptMode !== "per_person");
@@ -547,6 +617,9 @@
     document.getElementById("review-box").innerHTML = `
       <p><strong>المهمة:</strong> ${escapeHtml(createdTask.title)}</p>
       <p><strong>العدد المطلوب:</strong> ${quotaLine}</p>
+      ${leaderQuotaSummary.length ? `<p><strong>حصة كل ليدر:</strong></p><ul style="margin:0 0 10px; padding-inline-start:20px;">${leaderQuotaSummary.map(l =>
+        `<li><span class="studio-code" style="font-size:0.75rem;">${escapeHtml(l.code)}</span> — ` +
+        l.quotas.filter(q => q.max > 0).map(q => `<span>${GENDER_AR[q.gender]}</span>${q.ageBracket ? ` <span>${BRACKET_AR[q.ageBracket]}</span>` : ""}: <span dir="ltr">${q.max}</span>`).join(" • ") + `</li>`).join("")}</ul>` : ""}
       <p><strong>${isPerPerson() ? "عدد السكريبتات:" : "عدد الجمل:"}</strong> ${isPerPerson() ? scriptsUploaded : currentSamples.length}</p>
       <p><strong>الهوية:</strong> <span>${isCodes() ? "أكواد" : "أسامي مستعارة"}</span>${createdTask.direct ? ` • <span>نشر مباشر من غير ليدر</span>` : ""}</p>
       <p><strong>مهلة إعادة التسجيل:</strong> ${createdTask.rework_hours} ساعة</p>

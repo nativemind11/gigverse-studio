@@ -164,6 +164,19 @@
       <p class="studio-success" id="leader-success"></p>
     </div>
 
+    <!-- 3·) quota per leader -->
+    <div class="studio-card" id="leader-quota-card">
+      <h3 style="margin-top:0;">حصة كل ليدر</h3>
+      <p class="studio-hint" style="margin-top:0;">كام ولد وكام بنت (وكل فئة عمرية لو مفعّلة) كل ليدر يقدر يجيبهم. لما ليدر يوصل لعدده، المتسجّلين اللي بيدخلوا بكوده بيشوفوا "تم الاكتفاء". تقدر تزوّد أو تقلّل في أي وقت، بس مينفعش تنزّل عن عدد الناس المسجّلين فعلاً مع الليدر ده. الصفر معناه إن النوع ده مش مطلوب منه. العدد الإجمالي للمهمة بيتحسب لوحده من مجموع الليدرز.</p>
+      <div id="lq-inputs"></div>
+      <p class="studio-error" id="lq-error"></p>
+      <p class="studio-success" id="lq-success"></p>
+      <div style="display:flex; gap:8px; flex-wrap:wrap;">
+        <button type="button" class="studio-btn studio-btn-primary" id="lq-save">حفظ حصص الليدرز</button>
+        <button type="button" class="studio-btn studio-btn-secondary hidden" id="lq-clear">إلغاء حصص الليدرز</button>
+      </div>
+    </div>
+
     <!-- 3a) shared sentences file -->
     <div class="studio-card hidden" id="shared-script-card">
       <h3 style="margin-top:0;">ملف الجمل</h3>
@@ -258,6 +271,7 @@
 </main>
 
 <script src="js/studio-shared.js"></script>
+<script src="js/studio-hours.js"></script>
 <script>
   const user = NMStudio.requireStudioRole("head_leader");
   document.getElementById("logout-link").addEventListener("click", (e) => {
@@ -267,6 +281,8 @@
   const $ = (id) => document.getElementById(id);
   const taskId = new URLSearchParams(location.search).get("id");
   let task = null, samples = [], taskLeaders = [], allLeaders = [], scripts = [];
+  let leaderQuotas = [], leaderSlots = {};          // v4: quota per leader (empty = the task only has its total)
+  StudioHours.mount($("e-rework"));                  // 12 / 24 / 36 / 48 / 72 or any number of hours
 
   const GENDER_AR = { male: "ولاد", female: "بنات" };
   const BRACKET_ROWS = [["child", "أطفال"], ["adult", "بالغين"], ["elderly", "كبار السن"]];
@@ -286,6 +302,7 @@
     try {
       const [detail, leaders] = await Promise.all([NMStudio.apiGetTask(taskId), NMStudio.apiGetLeaders()]);
       task = detail.task; samples = detail.samples || []; taskLeaders = detail.leaders || []; scripts = detail.scripts || [];
+      leaderQuotas = detail.leaderQuotas || []; leaderSlots = detail.leaderSlots || {};
       allLeaders = (leaders || []).filter((l) => l.is_active !== false);
       $("loading-card").classList.add("hidden");
       $("edit-root").classList.remove("hidden");
@@ -300,7 +317,7 @@
     $("task-title-h").textContent = task.title;
     $("e-title").value = task.title || "";
     $("e-instructions").value = task.instructions || "";
-    $("e-rework").value = String(task.rework_hours || 12);
+    StudioHours.set($("e-rework"), task.rework_hours || 12);
     $("e-ref-audio").checked = task.use_reference_audio !== false;
     $("q-brackets").checked = !!task.use_age_brackets;
     const rs = task.recording_settings || {};
@@ -314,11 +331,13 @@
     clearMsgs("basic-error", "basic-success");
     const title = $("e-title").value.trim();
     if (!title) return showMsg("basic-error", "اكتب اسم المهمة.");
+    const reworkHours = StudioHours.get($("e-rework"));
+    if (!StudioHours.valid(reworkHours)) return showMsg("basic-error", `اكتب مهلة الإعادة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`);
     await busy(this, "جاري الحفظ...", async () => {
       try {
         task = await NMStudio.apiUpdateTask(taskId, {
           title, instructions: $("e-instructions").value,
-          reworkHours: Number($("e-rework").value), useReferenceAudio: $("e-ref-audio").checked,
+          reworkHours, useReferenceAudio: $("e-ref-audio").checked,
           difficulty: $("e-difficulty").value, sampleRate: Number($("e-sample-rate").value), bitDepth: Number($("e-bit-depth").value),
           format: $("e-format").value, channels: $("e-channels").value,
         });
@@ -373,6 +392,69 @@
     });
   });
 
+  // ------------------------------------------------------------- 3·) quota per leader (v4)
+  function renderLeaderQuotas() {
+    const card = $("leader-quota-card");
+    card.classList.toggle("hidden", !!task.direct);
+    const active = leaderQuotas.length > 0;
+    $("lq-clear").classList.toggle("hidden", !active);
+    // with a quota per leader the task total is the sum of theirs: the single total can't be edited on its own any more
+    $("quota-save").disabled = active;
+    const box = $("lq-inputs");
+    const keep = {}; box.querySelectorAll("input").forEach((i) => { keep[i.closest("[data-leader]").dataset.leader + "#" + i.dataset.k] = i.value; });
+    if (!taskLeaders.length) { box.innerHTML = `<p class="studio-hint mb-0">ضيف ليدر للمهمة الأول وبعدين حدد حصته.</p>`; return; }
+    const brackets = !!task.use_age_brackets;
+    const rowOf = (lid, g, b) => leaderQuotas.find((r) => r.leaderId === lid && r.gender === g && (r.ageBracket || "") === b) || null;
+    const usedOf = (lid, g, b) => { const sl = leaderSlots[lid]; const s = sl && sl.slots.find((x) => x.gender === g && (x.ageBracket || "") === b); return s ? s.used : 0; };
+    const cell = (lid, g, b) => {
+      const k = `${g}|${b}`, r = rowOf(lid, g, b);
+      const v = (lid + "#" + k) in keep ? keep[lid + "#" + k] : (r ? r.max : 0);
+      return `<input type="number" min="0" data-k="${k}" value="${v}" style="max-width:110px;">` +
+        (active ? `<div class="studio-hint"><span>المسجّلين حاليًا:</span> <span dir="ltr">${usedOf(lid, g, b)}</span></div>` : "");
+    };
+    box.innerHTML = taskLeaders.map((l) => {
+      const head = `<div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;"><span class="studio-code" style="font-size:0.8rem;">${escapeHtml(l.leader_code)}</span><strong>${escapeHtml(l.name)}</strong></div>`;
+      const body = brackets
+        ? `<div class="studio-table-wrap"><table class="studio-table"><thead><tr><th></th><th>ولاد</th><th>بنات</th></tr></thead><tbody>` +
+          BRACKET_ROWS.map(([b, label]) => `<tr><td>${label}</td><td>${cell(l.id, "male", b)}</td><td>${cell(l.id, "female", b)}</td></tr>`).join("") + `</tbody></table></div>`
+        : `<div class="studio-grid cols-2"><div class="studio-field" style="margin:0;"><label>عدد الأولاد</label>${cell(l.id, "male", "")}</div>
+           <div class="studio-field" style="margin:0;"><label>عدد البنات</label>${cell(l.id, "female", "")}</div></div>`;
+      return `<div data-leader="${l.id}" style="padding:10px 0; border-bottom:1px solid var(--studio-border);">${head}${body}</div>`;
+    }).join("");
+  }
+  function collectLeaderQuotas() {
+    return Array.from(document.querySelectorAll("#lq-inputs [data-leader]")).map((block) => ({
+      leaderId: block.dataset.leader,
+      quotas: Array.from(block.querySelectorAll("input")).map((i) => {
+        const [gender, ageBracket] = i.dataset.k.split("|");
+        return { gender, ageBracket, max: Number(i.value) || 0 };
+      }),
+    }));
+  }
+  async function saveLeaderQuotas(list, btn, okText) {
+    clearMsgs("lq-error", "lq-success");
+    await busy(btn, "جاري الحفظ...", async () => {
+      try {
+        await NMStudio.apiUpdateLeaderQuotas(taskId, { useAgeBrackets: !!task.use_age_brackets, leaderQuotas: list });
+        const d = await NMStudio.apiGetTask(taskId);                       // fresh totals + the people already under each leader
+        task = d.task; leaderQuotas = d.leaderQuotas || []; leaderSlots = d.leaderSlots || {};
+        $("quota-inputs").innerHTML = ""; renderQuotaInputs();
+        $("lq-inputs").innerHTML = ""; renderLeaderQuotas();
+        flashOk("lq-success", okText);
+      } catch (err) { showMsg("lq-error", err.message); }                  // e.g. 409: not below the number already registered
+    });
+    renderLeaderQuotas();                                                  // busy() re-enabled the buttons; the render decides what stays off
+  }
+  $("lq-save").addEventListener("click", function () {
+    const list = collectLeaderQuotas();
+    if (!list.some((l) => l.quotas.some((q) => q.max > 0))) return showMsg("lq-error", "اكتب عدد أكبر من صفر لليدر واحد على الأقل (أو دوس \"إلغاء حصص الليدرز\").");
+    saveLeaderQuotas(list, this, "✓ اتحفظت حصص الليدرز");
+  });
+  $("lq-clear").addEventListener("click", function () {
+    if (!confirm("هتلغي حصص الليدرز وتفضل المهمة بالعدد الإجمالي الحالي بس. تكمل؟")) return;
+    saveLeaderQuotas([], this, "✓ اتلغت حصص الليدرز");
+  });
+
   // ------------------------------------------------------------- 3) leaders
   function renderLeaders() {
     $("leaders-list").innerHTML = taskLeaders.length
@@ -384,6 +466,7 @@
     const rest = allLeaders.filter((l) => !have.has(l.id));
     $("add-leader-select").innerHTML = rest.map((l) => `<option value="${l.id}">${escapeHtml(l.leader_code)} — ${escapeHtml(l.name)}</option>`).join("");
     $("add-leader-select").disabled = $("add-leader-btn").disabled = !rest.length;
+    renderLeaderQuotas();
   }
   $("add-leader-btn").addEventListener("click", async function () {
     clearMsgs("leader-error", "leader-success");
@@ -488,7 +571,8 @@
   async function reloadTask() {
     const d = await NMStudio.apiGetTask(taskId);
     task = d.task; scripts = d.scripts || []; samples = d.samples || [];
-    $("quota-inputs").innerHTML = ""; renderQuotaInputs(); renderSystem();
+    leaderQuotas = d.leaderQuotas || []; leaderSlots = d.leaderSlots || {};
+    $("quota-inputs").innerHTML = ""; renderQuotaInputs(); renderLeaderQuotas(); renderSystem();
   }
   $("add-scripts-btn").addEventListener("click", async function () {
     clearMsgs("scripts-error", "scripts-success");
@@ -531,6 +615,7 @@
         task = await NMStudio.apiUpdateTask(taskId, body);
         const d = await NMStudio.apiGetTask(taskId);
         task = d.task; samples = d.samples || []; scripts = d.scripts || []; taskLeaders = d.leaders || [];
+        leaderQuotas = d.leaderQuotas || []; leaderSlots = d.leaderSlots || {};
         $("quota-inputs").innerHTML = ""; renderQuotaInputs(); renderLeaders(); renderSamples(); renderSystem();
         flashOk("modes-success", "✓ اتحفظ نظام المهمة — ارفع الجمل/الأكواد من الأقسام اللي تحت وانشر تاني.");
       } catch (err) { showMsg("modes-error", err.message); }

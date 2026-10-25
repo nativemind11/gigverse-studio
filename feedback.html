@@ -67,7 +67,7 @@
 <main class="studio-shell wide">
   <div class="studio-eyebrow">لوحة الهيد ليدر</div>
   <h1 class="studio-title">فيدباك الشركة</h1>
-  <p class="studio-subtitle">ارفع ملف الإكسيل اللي الشركة بعتته، وحدّد أنهي عمود فيه الاسم وأرقام التسجيلات ووصف المشكلة. النظام هيلاقي كل متسجّل وليدره، ويبعتلهم التسجيلات اللي فيها مشكلة <b>بس</b> للإعادة، وبيبدأ عداد <b>12 ساعة</b>. <b>لو المتسجّل مسلّمش في المهلة، الاسم بيتسحب منه ويتاح لمتسجّل تاني على نفس المهمة.</b></p>
+  <p class="studio-subtitle">ارفع ملف الإكسيل اللي الشركة بعتته، وحدّد أنهي عمود فيه الاسم وأرقام التسجيلات ووصف المشكلة. النظام هيلاقي كل متسجّل وليدره، ويبعتلهم التسجيلات اللي فيها مشكلة <b>بس</b> للإعادة، وبيبدأ عداد المهلة (<b>بالساعات اللي تحددها</b>). <b>لو المتسجّل مسلّمش في المهلة، الاسم بيتسحب منه ويتاح لمتسجّل تاني على نفس المهمة.</b></p>
 
   <div class="studio-card fb-step" id="step-upload">
     <h3>1) الملف</h3>
@@ -137,6 +137,11 @@
     <div class="fb-summary" id="summary"></div>
     <div id="warn-box"></div>
     <div class="studio-table-wrap"><table class="studio-table" id="result-table"></table></div>
+    <div class="studio-field" style="margin-top:14px; max-width:320px;">
+      <label for="fb-hours">مهلة الإعادة للفيدباك ده</label>
+      <select id="fb-hours"></select>
+      <p class="studio-hint" style="margin-top:6px;">لو سبتها "زي إعداد المهمة" هتتطبق المهلة اللي اتحددت وقت النشر.</p>
+    </div>
     <div style="margin-top:14px;">
       <button class="studio-btn studio-btn-primary" id="apply-btn">✅ تطبيق الفيدباك</button>
       <span class="studio-hint" id="apply-hint" style="margin-inline-start:10px;"></span>
@@ -156,6 +161,7 @@
 <div id="toast" class="fb-toast hidden"></div>
 
 <script src="js/studio-shared.js"></script>
+<script src="js/studio-hours.js"></script>
 <script>
   NMStudio.requireStudioRole("head_leader");
   document.getElementById("logout-link").addEventListener("click", (e) => { e.preventDefault(); NMStudio.logout(); location.href = "login.html"; });
@@ -333,9 +339,14 @@
       : "";
     if (warnings.length) $("warn-ok").addEventListener("change", updateApply);
     updateApply();
-    $("apply-hint").textContent = summary.ok ? `هيتبعت لـ ${summary.sessions} متسجّل وليدراهم، والعداد 12 ساعة.` : "مفيش صف صالح للتطبيق.";
+    $("apply-hint").textContent = summary.ok ? `هيتبعت لـ ${summary.sessions} متسجّل وليدراهم، والعداد ${hoursLabel()}.` : "مفيش صف صالح للتطبيق.";
     $("step-preview").scrollIntoView({ behavior: "smooth", block: "start" });
   }
+
+  // rework time chosen for THIS feedback: a number of hours, or empty = "as the task says"
+  StudioHours.mount($("fb-hours"), { inheritLabel: "زي إعداد المهمة", value: null });
+  $("fb-hours").addEventListener("change", () => { if (lastPreview) $("apply-hint").textContent = lastPreview.summary.ok ? `هيتبعت لـ ${lastPreview.summary.sessions} متسجّل وليدراهم، والعداد ${hoursLabel()}.` : "مفيش صف صالح للتطبيق."; });
+  function hoursLabel() { const h = StudioHours.get($("fb-hours")); return h === null ? "زي إعداد المهمة" : (StudioHours.valid(h) ? `${h} ساعة` : "—"); }
 
   function updateApply() {
     const w = (lastPreview && lastPreview.warnings) || [];
@@ -347,12 +358,15 @@
   $("apply-btn").addEventListener("click", async () => {
     showErr("apply-error", "");
     const { summary } = lastPreview;
-    if (!confirm(`هتبعت فيدباك لـ ${summary.sessions} متسجّل (${summary.ok} صف). التسجيلات المذكورة بس هترجعلهم للإعادة وبيبدأ عداد 12 ساعة. تكمل؟`)) return;
+    const hours = StudioHours.get($("fb-hours"));
+    if (hours !== null && !StudioHours.valid(hours)) return showErr("apply-error", `اكتب مهلة الإعادة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`);
+    if (!confirm(`هتبعت فيدباك لـ ${summary.sessions} متسجّل (${summary.ok} صف). التسجيلات المذكورة بس هترجعلهم للإعادة وبيبدأ عداد المهلة (${hoursLabel()}). تكمل؟`)) return;
     const btn = $("apply-btn");
     btn.disabled = true; btn.textContent = "جاري التطبيق...";
     try {
       const m = mapping();
       if ((lastPreview.warnings || []).length) m.confirmWarnings = "1";
+      if (hours !== null) m.reworkHours = String(hours);
       const r = await NMStudio.apiFeedbackApply(file, m);
       toast(`✅ اتسجّل فيدباك على <b>${r.sessions}</b> متسجّل (${r.samples} تسجيل). عداد ${r.reworkHours} ساعة بدأ.${r.skipped.length ? ` اتخطّينا ${r.skipped.length} صف فيه مشكلة.` : ""}`);
       $("step-preview").classList.add("hidden");

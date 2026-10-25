@@ -149,7 +149,7 @@
                 <tr>
                   <td class="dl-email">${esc(s.email || "—")}</td>
                   <td>${esc(s.realName || "—")}</td>
-                  <td><span class="studio-code">${esc(s.fakeName)}</span>${s.isRedelivery ? ` <span class="studio-pill status-pending" title="اتعاد تسجيله بعد فيدباك الشركة">🔁 معاد بعد فيدباك</span>` : ""}${s.isPartial ? ` <span class="studio-pill status-pending" title="الـ ZIP فيه التسجيلات المعادة بس">✂️ جزئي (${esc(s.sampleCount)})</span>` : ""}</td>
+                  <td><span class="studio-code">${esc(s.fakeName)}</span>${s.isRedelivery ? ` <span class="studio-pill status-pending" title="اتعاد تسجيله بعد فيدباك الشركة">🔁 معاد بعد فيدباك</span>` : ""}${s.isPartial ? ` <span class="studio-pill status-pending" title="الـ ZIP فيه التسجيلات المعادة بس">✂️ جزئي (${esc(s.sampleCount)})</span>` : ""}${s.isRework ? ` <span class="studio-pill status-pending" title="ZIP ريورك: فيه الجمل المعادة بس، وهيتعلّم Rework في الشيت">♻️ Rework${s.reworkNumbers && s.reworkNumbers.length ? ` (${esc(s.reworkNumbers.join(", "))})` : ""}</span>` : ""}</td>
                   <td>${esc(BRACKET[s.ageBracket] || s.ageBracket || "")}</td>
                   <td>${esc(s.age ?? "")}</td>
                   <td>${esc(s.sampleCount)}</td>
