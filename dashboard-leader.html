@@ -51,15 +51,13 @@
 
   <div id="share-links" style="margin-top:18px;"></div>
 
-  <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-top:18px;">
-    <div class="studio-card"><div class="studio-eyebrow">تاسكات مفتوحة ليك</div><div class="studio-title" style="font-size:1.8rem;" id="stat-open">—</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">لسه بيسجّلوا</div><div class="studio-title" style="font-size:1.8rem;" id="stat-progress">—</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">اتراجع من خلالنا</div><div class="studio-title" style="font-size:1.8rem;" id="stat-ours">—</div><div class="studio-hint" style="margin-top:4px;" id="stat-ours-sub"></div></div>
-    <div class="studio-card"><div class="studio-eyebrow">اتراجع من الشركة (فيه جمل إعادة)</div><div class="studio-title" style="font-size:1.8rem;" id="stat-company">—</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">رفض نهائي</div><div class="studio-title" style="font-size:1.8rem;" id="stat-final">—</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">تسليمات معتمدة</div><div class="studio-title" style="font-size:1.8rem;" id="stat-approved">—</div><div class="studio-hint" style="margin-top:4px;">المهمة خلصت ومفيش فيدباك</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">تسليمات مرفوضة</div><div class="studio-title" style="font-size:1.8rem;" id="stat-rejected">—</div></div>
+  <div class="studio-card" style="margin-top:18px; display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap;">
+    <div><div class="studio-eyebrow">تاسكات مفتوحة ليك</div><div class="studio-title" style="font-size:1.8rem; margin:0;" id="stat-open">—</div></div>
+    <p class="studio-hint" style="margin:0; max-width:420px;">الأرقام تحت متفصّلة لكل تاسك لوحده.</p>
   </div>
+
+  <div id="task-boxes"><p class="studio-hint" style="margin-top:18px;">جاري التحميل...</p></div>
+
 
   <div class="studio-card" style="margin-top:18px;">
     <div style="display:flex; justify-content:space-between; align-items:center; gap:12px; flex-wrap:wrap;">
@@ -135,10 +133,23 @@
     const team = document.getElementById("team-wrap"), tasks = document.getElementById("tasks-wrap");
     try {
       const { stats, tasks: tl, sessions } = await NMStudio.apiLeaderOverview();
-      setStat("stat-open", stats.openTasks); setStat("stat-progress", stats.inProgress);
-      setStat("stat-ours", stats.reviewedByUs || 0); setStat("stat-company", stats.reviewedByCompany || 0); setStat("stat-final", stats.finalRejected || 0);
-      setStat("stat-approved", stats.approved); setStat("stat-rejected", stats.rejected);
-      document.getElementById("stat-ours-sub").textContent = stats.reviewedByUsDelivered ? `منهم اتسلّم للشركة: ${stats.reviewedByUsDelivered}` : "";
+      setStat("stat-open", stats.openTasks);
+      // one block of boxes PER TASK (not one total for everything)
+      const box = (label, v, sub) => `<div class="studio-card"><div class="studio-eyebrow">${label}</div><div class="studio-title" style="font-size:1.8rem;">${v}</div>${sub ? `<div class="studio-hint" style="margin-top:4px;">${sub}</div>` : ""}</div>`;
+      document.getElementById("task-boxes").innerHTML = !tl.length
+        ? `<div class="studio-card" style="margin-top:18px;"><div class="studio-empty"><div class="icon">📋</div><p>الهيد ليدر لسه ما ربطش كودك بأي مهمة.</p></div></div>`
+        : tl.map((t) => {
+            const ts = TASK_STATUS[t.status] || ["", t.status];
+            return `<div class="studio-card" style="margin-top:18px;">
+              <div style="display:flex; align-items:center; gap:10px; flex-wrap:wrap;"><h3 style="margin:0;">${esc(t.title)}</h3><span class="studio-pill ${ts[0]}">${ts[1]}</span></div>
+              <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-top:14px;">
+                ${box("لسه بيسجّلوا", t.in_progress)}
+                ${box("اتراجع من خلالنا", t.reviewed_by_us, t.reviewed_by_us_delivered ? `منهم اتسلّم للشركة: ${t.reviewed_by_us_delivered}` : "")}
+                ${box("اتراجع من الشركة (فيه جمل إعادة)", t.reviewed_by_company)}
+                ${box("رفض نهائي", t.final_rejected)}
+                ${box("تسليمات مرفوضة", t.rejected)}
+              </div></div>`;
+          }).join("");
 
       team.innerHTML = !sessions.length
         ? `<div class="studio-empty"><div class="icon">👥</div><p>لسه محدش سجّل بكودك. ابعت لينك المتسجّلين اللي فوق.</p></div>`
@@ -148,7 +159,6 @@
               const CAT = {
                 company: ["status-rejected", "↩️ اتراجع من الشركة — محتاج إعادة"],
                 final: ["status-rejected", "🚫 رفض نهائي"],
-                approved: ["status-approved", "✅ معتمد (المهمة خلصت)"],
               };
               const st = CAT[x.cat] || (x.status === "approved" && x.delivered ? ["status-approved", "📦 اتسلّم للشركة"] : x.status === "approved" ? ["status-approved", "✅ اتراجع من خلالنا"] : (SESSION_STATUS[x.status] || ["", x.status]));
               const showNote = x.status === "rejected" || x.cat === "company";
@@ -170,15 +180,15 @@
       tasks.innerHTML = !tl.length
         ? `<div class="studio-empty"><div class="icon">📋</div><p>الهيد ليدر لسه ما ربطش كودك بأي مهمة.</p></div>`
         : `<div class="studio-table-wrap"><table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>المتسجّلين</th><th>بيسجّلوا</th><th>اتراجع من خلالنا</th><th>اتراجع من الشركة</th><th>رفض نهائي</th><th>معتمدة</th><th>مرفوضة</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>المتسجّلين</th><th>بيسجّلوا</th><th>اتراجع من خلالنا</th><th>اتراجع من الشركة</th><th>رفض نهائي</th><th>مرفوضة</th></tr></thead>
             <tbody>${tl.map((t) => {
               const ts = TASK_STATUS[t.status] || ["", t.status];
               return `<tr><td>${esc(t.title)}</td><td><span class="studio-pill ${ts[0]}">${ts[1]}</span></td>
-                <td>${t.sessions}</td><td>${t.in_progress}</td><td>${t.reviewed_by_us}</td><td>${t.reviewed_by_company}</td><td>${t.final_rejected}</td><td>${t.approved}</td><td>${t.rejected}</td></tr>`;
+                <td>${t.sessions}</td><td>${t.in_progress}</td><td>${t.reviewed_by_us}</td><td>${t.reviewed_by_company}</td><td>${t.final_rejected}</td><td>${t.rejected}</td></tr>`;
             }).join("")}</tbody></table></div>`;
     } catch (err) {
       const msg = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`;
-      team.innerHTML = msg; tasks.innerHTML = msg;
+      team.innerHTML = msg; tasks.innerHTML = msg; document.getElementById("task-boxes").innerHTML = msg;
     }
   }
   if (user) loadOverview();

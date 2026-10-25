@@ -1002,4 +1002,5 @@ window.STUDIO_I18N = { en: {
   "+ {} صف رفض نهائي.": "+ {} final-rejection rows.",
   "— الشركة رفضت تسجيلات ({}) رفضًا نهائيًا ومفيش إعادة مطلوبة منك.": "— The company rejected recordings ({}) for good; no redo is needed from you.",
   "السبب: {}": "Reason: {}",
+  "الأرقام تحت متفصّلة لكل تاسك لوحده.": "The numbers below are broken down per task.",
 } };
