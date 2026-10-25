@@ -40,6 +40,13 @@
   .fb-raw .col-numbers { background: rgba(251, 191, 36, 0.12); }
   .fb-raw .col-desc { background: rgba(167, 139, 250, 0.14); }
   .fb-raw .col-status { background: rgba(248, 113, 113, 0.12); }
+  .fb-raw .col-file { background: rgba(96, 165, 250, 0.14); }
+  .fb-raw .col-text { background: rgba(251, 146, 60, 0.14); }
+  .fb-how { display: block; font-size: 0.75rem; color: var(--studio-text-dim, #9aa4b2); margin-top: 2px; max-width: 220px; }
+  .fb-how.weak { color: #fbbf24; }
+  .fb-names { border: 1px solid rgba(96, 165, 250, 0.5); background: rgba(96, 165, 250, 0.07); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  .fb-names table { width: 100%; }
+  .fb-names td { padding: 6px 8px; vertical-align: middle; }
   .fb-check { display: flex; gap: 8px; align-items: center; cursor: pointer; margin: 4px 0; }
   .fb-warn { border: 1px solid rgba(251, 191, 36, 0.55); background: rgba(251, 191, 36, 0.08); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
   .fb-warn ul { padding-inline-start: 20px; line-height: 1.8; margin: 8px 0; }
@@ -88,6 +95,7 @@
   <div class="studio-card fb-step hidden" id="step-map">
     <h3>2) حدّد الأعمدة</h3>
     <p class="studio-hint">كل شركة شكل ملفها مختلف، فحدّد بنفسك. اخترتلك الأعمدة اللي شبه المطلوب، عدّلها لو غلط.</p>
+    <p class="studio-hint hidden" id="detect-note" style="color:var(--studio-accent);">✨ النظام عرف الأعمدة من اللي جواها (الأسماء، أسماء الملفات، نصوص الجمل) مش من عناوينها — راجعها قبل المعاينة.</p>
     <div class="fb-grid">
       <div class="studio-field" style="margin:0;" id="sheet-field">
         <label for="sheet-select">الشيت</label>
@@ -101,6 +109,7 @@
         <label for="label-col">عمود الاسم أو ملف الـ ZIP</label>
         <select id="label-col"></select>
         <div class="fb-radio">
+          <label><input type="radio" name="label-type" value="smart"> اسم + إضافات (نوع/سن/فئة) — يقارن الاسم بس</label>
           <label><input type="radio" name="label-type" value="fake" checked> اسم مستعار</label>
           <label><input type="radio" name="label-type" value="zip"> اسم ملف ZIP كامل</label>
         </div>
@@ -108,6 +117,7 @@
       <div class="studio-field" style="margin:0;">
         <label>طريقة تحديد رقم التسجيل</label>
         <div class="fb-radio" style="flex-direction:column; gap:8px;">
+          <label><input type="radio" name="numbers-mode" value="match"> مطابقة بالجملة: اسم الملف + نص الجملة (من غير أرقام)</label>
           <label><input type="radio" name="numbers-mode" value="row_order"> ترتيب الصف: صف لكل تسجيل، والتسجيل رقم n هو الصف رقم n لنفس المتسجّل</label>
           <label><input type="radio" name="numbers-mode" value="column" checked> عمود فيه رقم التسجيل نفسه</label>
         </div>
@@ -116,6 +126,13 @@
           <p class="studio-hint" style="margin:4px 0 0;">بيفهم: 3 — 3, 5, 7 — 2-4 — ٣ و ٥ — all</p>
         </div>
         <p class="studio-hint hidden" id="order-hint" style="margin:6px 0 0;">اسم التسجيل (زي hi_fast_01) مش بيتستخدم كرقم، لأنه غالبًا بيبدأ من 1 جوه كل مجموعة.</p>
+        <div id="match-wrap" class="hidden" style="margin-top:8px;">
+          <label for="file-col" class="studio-hint" style="display:block; margin:0 0 4px;">عمود اسم الملف (الرقم والسرعة جواه بيحددوا الجملة)</label>
+          <select id="file-col"></select>
+          <label for="text-col" class="studio-hint" style="display:block; margin:8px 0 4px;">عمود نص الجملة (زي ما هي في السكريبت بتاعك)</label>
+          <select id="text-col"></select>
+          <p class="studio-hint" style="margin:6px 0 0;">النظام بيقارن الاسم والجملة بسكريبت كل متسجّل لوحده. لو الرقم والنص مش متطابقين بيحذّرك، ولو الجملة متكررة ومفيش اسم ملف بيرفض الصف.</p>
+        </div>
       </div>
       <div class="studio-field" style="margin:0;">
         <label for="status-col">عمود الحالة (اختياري)</label>
@@ -135,6 +152,7 @@
   <div class="studio-card fb-step hidden" id="step-preview">
     <h3>3) المعاينة</h3>
     <div class="fb-summary" id="summary"></div>
+    <div id="names-box"></div>
     <div id="warn-box"></div>
     <div class="studio-table-wrap"><table class="studio-table" id="result-table"></table></div>
     <div class="studio-field" style="margin-top:14px; max-width:320px;">
@@ -174,6 +192,7 @@
   let sheets = [];     // from /parse
   let lastPreview = null;
   let rejectSet = new Set();   // the status values that mean "send it back"
+  let nameMap = {};            // names picked by hand: label in the sheet -> session id (checked again by the server)
 
   function toast(html, bad) {
     const t = $("toast");
@@ -202,7 +221,8 @@
     const btn = $("parse-btn");
     btn.disabled = true; btn.textContent = "جاري القراءة...";
     try {
-      sheets = (await NMStudio.apiFeedbackParse(file)).sheets;
+      nameMap = {};
+      sheets = (await NMStudio.apiFeedbackParse(file, $("task-select").value)).sheets;
       $("sheet-select").innerHTML = sheets.map((s, i) => `<option value="${i}">${esc(s.name)} (${s.rowCount} صف)</option>`).join("");
       $("sheet-field").classList.toggle("hidden", sheets.length < 2);
       $("step-map").classList.remove("hidden");
@@ -229,6 +249,8 @@
     pick("label-col", guess.labelCol, false);
     pick("numbers-col", guess.numbersCol, false);
     pick("desc-col", guess.descCol, true);
+    pick("file-col", guess.fileCol == null ? -1 : guess.fileCol, true);
+    pick("text-col", guess.textCol == null ? -1 : guess.textCol, true);
     pick("status-col", guess.statusCol == null ? -1 : guess.statusCol, true);
     document.querySelector(`input[name="label-type"][value="${guess.labelType}"]`).checked = true;
     document.querySelector(`input[name="numbers-mode"][value="${guess.numbersMode || "column"}"]`).checked = true;
@@ -240,9 +262,10 @@
 
   const numbersMode = () => document.querySelector('input[name="numbers-mode"]:checked').value;
   function toggleNumbersMode() {
-    const byOrder = numbersMode() === "row_order";
-    $("numbers-col-wrap").classList.toggle("hidden", byOrder);
+    const byOrder = numbersMode() === "row_order", byMatch = numbersMode() === "match";
+    $("numbers-col-wrap").classList.toggle("hidden", byOrder || byMatch);
     $("order-hint").classList.toggle("hidden", !byOrder);
+    $("match-wrap").classList.toggle("hidden", !byMatch);
   }
   function renderStatusValues() {
     const box = $("status-values"), col = Number($("status-col").value);
@@ -261,16 +284,19 @@
   function applySheet(i) {
     const s = sheets[i];
     $("header-row").value = s.headerRow;
-    fillSelects(s, s.headerRow, { ...s.guess, ...(s.suggest || {}) });   // + row order / status column suggestions
+    const d = s.detect || {};   // columns recognised by what is INSIDE them (names / audio files / sentences), whatever the titles are
+    const hasDetect = d.labelCol != null && d.labelCol >= 0;
+    fillSelects(s, s.headerRow, { ...s.guess, ...(s.suggest || {}), ...(hasDetect ? { ...d, descCol: d.descCol >= 0 ? d.descCol : s.guess.descCol } : {}) });
+    $("detect-note").classList.toggle("hidden", !hasDetect);
   }
   $("sheet-select").addEventListener("change", (e) => applySheet(Number(e.target.value)));
   $("header-row").addEventListener("change", () => {
     const s = sheets[Number($("sheet-select").value)];
     const hr = Math.max(1, Number($("header-row").value) || 1);
-    const keep = { labelCol: Number($("label-col").value || -1), numbersCol: Number($("numbers-col").value || -1), descCol: Number($("desc-col").value), statusCol: Number($("status-col").value || -1), labelType: document.querySelector('input[name="label-type"]:checked').value, numbersMode: numbersMode(), rejectValues: [...rejectSet] };
+    const keep = { fileCol: Number($("file-col").value || -1), textCol: Number($("text-col").value || -1), labelCol: Number($("label-col").value || -1), numbersCol: Number($("numbers-col").value || -1), descCol: Number($("desc-col").value), statusCol: Number($("status-col").value || -1), labelType: document.querySelector('input[name="label-type"]:checked').value, numbersMode: numbersMode(), rejectValues: [...rejectSet] };
     fillSelects(s, hr, keep);
   });
-  ["label-col", "numbers-col", "desc-col"].forEach((id) => $(id).addEventListener("change", renderRaw));
+  ["label-col", "numbers-col", "desc-col", "file-col", "text-col"].forEach((id) => $(id).addEventListener("change", renderRaw));
   $("status-col").addEventListener("change", () => { rejectSet = new Set(); renderStatusValues(); renderRaw(); });
   document.querySelectorAll('input[name="numbers-mode"]').forEach((r) => r.addEventListener("change", () => { toggleNumbersMode(); renderRaw(); }));
 
@@ -279,8 +305,8 @@
     if (!s) return;
     const hr = Math.max(1, Number($("header-row").value) || 1);
     const cols = columnsFor(s, hr);
-    const byOrder = numbersMode() === "row_order";
-    const cls = (i) => (String(i) === $("label-col").value ? "col-label" : !byOrder && String(i) === $("numbers-col").value ? "col-numbers" : String(i) === $("desc-col").value ? "col-desc" : String(i) === $("status-col").value ? "col-status" : "");
+    const byOrder = numbersMode() === "row_order", byMatch = numbersMode() === "match";
+    const cls = (i) => (String(i) === $("label-col").value ? "col-label" : byMatch && String(i) === $("file-col").value ? "col-file" : byMatch && String(i) === $("text-col").value ? "col-text" : !byOrder && !byMatch && String(i) === $("numbers-col").value ? "col-numbers" : String(i) === $("desc-col").value ? "col-desc" : String(i) === $("status-col").value ? "col-status" : "");
     const rows = s.preview.slice(hr - 1, hr + 5);
     $("raw-table").innerHTML = `<thead><tr>${cols.map((c) => `<th class="${cls(c.index)}">${esc(colName(c))}</th>`).join("")}</tr></thead>
       <tbody>${rows.slice(1).map((r) => `<tr>${cols.map((c) => `<td class="${cls(c.index)}">${esc(r[c.index] || "")}</td>`).join("")}</tr>`).join("")}</tbody>`;
@@ -292,6 +318,7 @@
       labelCol: $("label-col").value, numbersCol: $("numbers-col").value, descCol: $("desc-col").value,
       labelType: document.querySelector('input[name="label-type"]:checked').value,
       numbersMode: numbersMode(), statusCol: $("status-col").value || "-1", rejectValues: JSON.stringify([...rejectSet]),
+      fileCol: $("file-col").value || "-1", textCol: $("text-col").value || "-1", nameMap: JSON.stringify(nameMap),
     };
   }
 
@@ -301,6 +328,7 @@
     const m = mapping();
     if (m.labelCol === "") return showErr("map-error", "اختار عمود الاسم أو ملف الـ ZIP.");
     if (m.numbersMode === "column" && m.numbersCol === "") return showErr("map-error", "اختار عمود أرقام التسجيلات.");
+    if (m.numbersMode === "match" && Number(m.fileCol) < 0 && Number(m.textCol) < 0) return showErr("map-error", "اختار عمود اسم الملف أو عمود نص الجملة.");
     if (Number(m.statusCol) >= 0 && !rejectSet.size) return showErr("map-error", "علّم على القيم اللي معناها \"مرفوض\" في عمود الحالة.");
     const btn = $("preview-btn");
     btn.disabled = true; btn.textContent = "جاري المعاينة...";
@@ -311,9 +339,48 @@
     finally { btn.disabled = false; btn.textContent = "معاينة النتيجة"; }
   });
 
-  function renderPreview() {
+  // match mode: which sentence the row was matched to, and how sure we are
+  function matchNote(r) {
+    if (!r.match) return "";
+    const m = r.match;
+    const sure = m.how === "file+text" ? "✅ الرقم والنص متطابقين" : m.how === "file" ? "✅ بالرقم" : "⚠️ بالنص بس (رقم الملف مش مطابق)";
+    return `<span class="fb-how ${m.how === "text" && m.note ? "weak" : ""}">${esc(m.text)}${m.speed ? " · " + esc(m.speed) : ""}<br>${sure}</span>`;
+  }
+
+  // names the sheet uses that matched nobody: pick the right person once, the choice applies to all that name's rows
+  function renderNames() {
+    const box = $("names-box");
+    const groups = new Map();
+    (lastPreview.results || []).filter((r) => r.unmatchedName || r.viaManual).forEach((r) => {
+      const g = groups.get(r.label) || { label: r.label, n: 0, sugg: r.suggestions || [] };
+      g.n++; if ((r.suggestions || []).length) g.sugg = r.suggestions; groups.set(r.label, g);
+    });
+    const bad = [...groups.values()].filter((g) => !nameMap[g.label]);
+    if (!groups.size) { box.innerHTML = ""; return; }
+    const people = lastPreview.people || [];
+    const lab = (p) => `${p.fakeName}${p.gender ? " — " + (p.gender === "male" ? "♂" : "♀") : ""}${p.age != null ? " — " + p.age : ""}`;
+    box.innerHTML = `<div class="fb-names"><b>🔎 أسماء في الملف مش لاقيلها متسجّل (${bad.length})</b>
+      <p class="studio-hint" style="margin:4px 0 8px;">اختار المتسجّل الصح لكل اسم، والاختيار بيتطبق على كل صفوف الاسم ده.</p>
+      <table>${[...groups.values()].map((g, i) => {
+        const near = g.sugg.map((p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`).join("");
+        const all = people.map((p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`).join("");
+        return `<tr><td class="fb-email">${esc(g.label)}</td><td>${g.n} صف</td>
+          <td><select data-label="${esc(g.label)}" data-i="${i}"><option value="">— اختار المتسجّل —</option>${near ? `<option disabled>الأقرب</option>${near}<option disabled>كل المتسجّلين</option>` : ""}${all}</select></td></tr>`;
+      }).join("")}</table></div>`;
+    box.querySelectorAll("select").forEach((sel) => {
+      if (nameMap[sel.dataset.label]) sel.value = nameMap[sel.dataset.label];
+      sel.addEventListener("change", async () => {
+        if (sel.value) nameMap[sel.dataset.label] = sel.value; else delete nameMap[sel.dataset.label];
+        try { lastPreview = await NMStudio.apiFeedbackPreview(file, mapping()); renderPreview(false); }
+        catch (err) { showErr("map-error", err.message); }
+      });
+    });
+  }
+
+  function renderPreview(scroll = true) {
     const { results, summary, sampleCount, task, warnings = [] } = lastPreview;
     $("step-preview").classList.remove("hidden");
+    renderNames();
     const ign = Object.entries(summary.ignoredBy || {}).map(([v, n]) => `${esc(v)}: ${n}`).join(", ");
     $("summary").innerHTML = `
       <span class="studio-pill status-approved">✅ ${summary.ok} صف صالح</span>
@@ -329,7 +396,7 @@
           <td class="fb-email">${esc(r.label)}</td>
           <td>${r.session ? `<span class="studio-code">${esc(r.session.fakeName)}</span><br>${esc(r.session.realName || "")}<br><span class="fb-email">${esc(r.session.email || "")}</span>` : "—"}</td>
           <td>${r.session ? esc(r.session.leaderCode) : "—"}</td>
-          <td>${(r.numbers || []).map((n) => `<span class="fb-chip">${n}</span>`).join("") || "—"}</td>
+          <td>${(r.numbers || []).map((n) => `<span class="fb-chip">${n}</span>`).join("") || "—"}${matchNote(r)}</td>
           <td>${esc(r.description || "—")}</td>
           <td>${r.ok ? `<span class="fb-ok">✓ جاهز</span>` : `<span class="fb-err">${esc(r.message)}</span>`}</td>
         </tr>`).join("")}</tbody>`;
@@ -340,7 +407,7 @@
     if (warnings.length) $("warn-ok").addEventListener("change", updateApply);
     updateApply();
     $("apply-hint").textContent = summary.ok ? `هيتبعت لـ ${summary.sessions} متسجّل وليدراهم، والعداد ${hoursLabel()}.` : "مفيش صف صالح للتطبيق.";
-    $("step-preview").scrollIntoView({ behavior: "smooth", block: "start" });
+    if (scroll) $("step-preview").scrollIntoView({ behavior: "smooth", block: "start" });
   }
 
   // rework time chosen for THIS feedback: a number of hours, or empty = "as the task says"

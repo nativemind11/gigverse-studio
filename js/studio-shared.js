@@ -244,7 +244,7 @@
 
   // ---- company feedback (Phase 7) --------------------------------------
   // The spreadsheet travels with every step, the mapping rides along as fields.
-  function apiFeedbackParse(file) { return apiUploadFile("/api/studio/feedback/parse", file); }
+  function apiFeedbackParse(file, taskId) { return apiUploadFile("/api/studio/feedback/parse", file, taskId ? { taskId } : undefined); }
   function apiFeedbackPreview(file, mapping) { return apiUploadFile("/api/studio/feedback/preview", file, mapping); }
   function apiFeedbackApply(file, mapping) { return apiUploadFile("/api/studio/feedback/apply", file, mapping); }
   function apiFeedbackItems(taskId) {
