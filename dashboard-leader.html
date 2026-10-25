@@ -54,8 +54,10 @@
   <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(150px, 1fr)); gap:14px; margin-top:18px;">
     <div class="studio-card"><div class="studio-eyebrow">تاسكات مفتوحة ليك</div><div class="studio-title" style="font-size:1.8rem;" id="stat-open">—</div></div>
     <div class="studio-card"><div class="studio-eyebrow">لسه بيسجّلوا</div><div class="studio-title" style="font-size:1.8rem;" id="stat-progress">—</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">تسليمات قيد المراجعة</div><div class="studio-title" style="font-size:1.8rem;" id="stat-reviewing">—</div></div>
-    <div class="studio-card"><div class="studio-eyebrow">تسليمات معتمدة</div><div class="studio-title" style="font-size:1.8rem;" id="stat-approved">—</div></div>
+    <div class="studio-card"><div class="studio-eyebrow">اتراجع من خلالنا</div><div class="studio-title" style="font-size:1.8rem;" id="stat-ours">—</div><div class="studio-hint" style="margin-top:4px;" id="stat-ours-sub"></div></div>
+    <div class="studio-card"><div class="studio-eyebrow">اتراجع من الشركة (فيه جمل إعادة)</div><div class="studio-title" style="font-size:1.8rem;" id="stat-company">—</div></div>
+    <div class="studio-card"><div class="studio-eyebrow">رفض نهائي</div><div class="studio-title" style="font-size:1.8rem;" id="stat-final">—</div></div>
+    <div class="studio-card"><div class="studio-eyebrow">تسليمات معتمدة</div><div class="studio-title" style="font-size:1.8rem;" id="stat-approved">—</div><div class="studio-hint" style="margin-top:4px;">المهمة خلصت ومفيش فيدباك</div></div>
     <div class="studio-card"><div class="studio-eyebrow">تسليمات مرفوضة</div><div class="studio-title" style="font-size:1.8rem;" id="stat-rejected">—</div></div>
   </div>
 
@@ -102,7 +104,7 @@
       wrap.innerHTML = `<div class="studio-table-wrap"><table class="studio-table">
         <thead><tr><th>المتسجّل</th><th>المهمة</th><th>التسجيلات</th><th>المشكلة</th><th>الحالة</th><th>المهلة</th></tr></thead>
         <tbody>${items.slice(0, 50).map((i) => {
-          const st = i.overdue ? ["status-rejected", "⏰ متأخر"] : (FB_STATUS[i.status] || ["", i.status]);
+          const st = i.is_final ? ["status-rejected", "🚫 رفض نهائي"] : i.overdue ? ["status-rejected", "⏰ متأخر"] : (FB_STATUS[i.status] || ["", i.status]);
           const left = (i.status === "reworked" || i.status === "expired") ? null : NMStudio.timeLeft(i.rework_deadline);
           return `<tr>
             <td><span class="studio-code">${esc(i.fake_name)}</span><br>${esc(i.real_name || "")}<br><span style="font-family:var(--studio-mono); font-size:0.8rem; direction:ltr; unicode-bidi:plaintext;">${esc(i.email || "")}</span></td>
@@ -133,17 +135,25 @@
     const team = document.getElementById("team-wrap"), tasks = document.getElementById("tasks-wrap");
     try {
       const { stats, tasks: tl, sessions } = await NMStudio.apiLeaderOverview();
-      setStat("stat-open", stats.openTasks); setStat("stat-progress", stats.inProgress); setStat("stat-reviewing", stats.reviewing);
+      setStat("stat-open", stats.openTasks); setStat("stat-progress", stats.inProgress);
+      setStat("stat-ours", stats.reviewedByUs || 0); setStat("stat-company", stats.reviewedByCompany || 0); setStat("stat-final", stats.finalRejected || 0);
       setStat("stat-approved", stats.approved); setStat("stat-rejected", stats.rejected);
+      document.getElementById("stat-ours-sub").textContent = stats.reviewedByUsDelivered ? `منهم اتسلّم للشركة: ${stats.reviewedByUsDelivered}` : "";
 
       team.innerHTML = !sessions.length
         ? `<div class="studio-empty"><div class="icon">👥</div><p>لسه محدش سجّل بكودك. ابعت لينك المتسجّلين اللي فوق.</p></div>`
         : `<div class="studio-table-wrap"><table class="studio-table">
             <thead><tr><th>المتسجّل</th><th>المهمة</th><th>التقدّم</th><th>الحالة</th><th>ملاحظة</th></tr></thead>
             <tbody>${sessions.map((x) => {
-              const st = x.status === "approved" && x.delivered ? ["status-approved", "📦 اتسلّم للشركة"] : (SESSION_STATUS[x.status] || ["", x.status]);
-              const left = x.status === "rejected" && x.rework_deadline ? NMStudio.timeLeft(x.rework_deadline) : null;
-              const note = x.status === "rejected"
+              const CAT = {
+                company: ["status-rejected", "↩️ اتراجع من الشركة — محتاج إعادة"],
+                final: ["status-rejected", "🚫 رفض نهائي"],
+                approved: ["status-approved", "✅ معتمد (المهمة خلصت)"],
+              };
+              const st = CAT[x.cat] || (x.status === "approved" && x.delivered ? ["status-approved", "📦 اتسلّم للشركة"] : x.status === "approved" ? ["status-approved", "✅ اتراجع من خلالنا"] : (SESSION_STATUS[x.status] || ["", x.status]));
+              const showNote = x.status === "rejected" || x.cat === "company";
+              const left = showNote && x.rework_deadline ? NMStudio.timeLeft(x.rework_deadline) : null;
+              const note = showNote
                 ? `${esc(x.rejection_reason || "")}${left ? `<br><span style="${left.overdue ? "color:var(--studio-danger); font-weight:700;" : ""}">${esc(left.text)}</span>` : ""}`
                 : "—";
               return `<tr>
@@ -160,11 +170,11 @@
       tasks.innerHTML = !tl.length
         ? `<div class="studio-empty"><div class="icon">📋</div><p>الهيد ليدر لسه ما ربطش كودك بأي مهمة.</p></div>`
         : `<div class="studio-table-wrap"><table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>المتسجّلين</th><th>بيسجّلوا</th><th>قيد المراجعة</th><th>معتمدة</th><th>مرفوضة</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>المتسجّلين</th><th>بيسجّلوا</th><th>اتراجع من خلالنا</th><th>اتراجع من الشركة</th><th>رفض نهائي</th><th>معتمدة</th><th>مرفوضة</th></tr></thead>
             <tbody>${tl.map((t) => {
               const ts = TASK_STATUS[t.status] || ["", t.status];
               return `<tr><td>${esc(t.title)}</td><td><span class="studio-pill ${ts[0]}">${ts[1]}</span></td>
-                <td>${t.sessions}</td><td>${t.in_progress}</td><td>${t.reviewing}</td><td>${t.approved}</td><td>${t.rejected}</td></tr>`;
+                <td>${t.sessions}</td><td>${t.in_progress}</td><td>${t.reviewed_by_us}</td><td>${t.reviewed_by_company}</td><td>${t.final_rejected}</td><td>${t.approved}</td><td>${t.rejected}</td></tr>`;
             }).join("")}</tbody></table></div>`;
     } catch (err) {
       const msg = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`;

@@ -143,6 +143,11 @@
         <label for="desc-col">عمود وصف المشكلة</label>
         <select id="desc-col"></select>
       </div>
+      <div class="studio-field" style="margin:0;">
+        <label>نوع الفيدباك</label>
+        <label class="fb-check"><input type="checkbox" id="all-final"> 🚫 رفض نهائي — من غير إعادة (كل صفوف الملف)</label>
+        <p class="studio-hint" style="margin:4px 0 0;">مفيش حاجة بترجع للمتسجّل ولا بيبدأ عداد. بيتسجّل في لوحة الليدر في "رفض نهائي". لو الشيت فيه عمود حالة، تقدر تعلّم "نهائي" على قيم معينة بس.</p>
+      </div>
     </div>
     <div class="studio-table-wrap"><table class="studio-table fb-raw" id="raw-table"></table></div>
     <div style="margin-top:14px;"><button class="studio-btn studio-btn-primary" id="preview-btn">معاينة النتيجة</button></div>
@@ -192,6 +197,7 @@
   let sheets = [];     // from /parse
   let lastPreview = null;
   let rejectSet = new Set();   // the status values that mean "send it back"
+  let finalSet = new Set();    // status values that mean "rejected for good" (v5)
   let nameMap = {};            // names picked by hand: label in the sheet -> session id (checked again by the server)
 
   function toast(html, bad) {
@@ -273,11 +279,16 @@
     const s = sheets[Number($("sheet-select").value)];
     const vals = s && s.columns[col] && s.columns[col].values;
     if (!vals) { box.innerHTML = `<p class="studio-hint">العمود ده فيه قيم كتير مش شبه عمود حالة. اختار عمود فيه كلمات قليلة زي مقبول / مرفوض.</p>`; return; }
-    box.innerHTML = `<p class="studio-hint" style="margin:0 0 6px;">علّم على القيم اللي معناها "مرفوض" (بترجع للمتسجّل). الباقي بيتجاهل:</p>`
-      + vals.map((x, i) => `<label class="fb-check"><input type="checkbox" data-i="${i}" ${rejectSet.has(x.v) ? "checked" : ""}> ${esc(x.v)} <span class="studio-hint">(${x.n})</span></label>`).join("");
-    box.querySelectorAll("input").forEach((inp) => inp.addEventListener("change", () => {
+    box.innerHTML = `<p class="studio-hint" style="margin:0 0 6px;">علّم على القيم اللي معناها "مرفوض" (بترجع للمتسجّل). الباقي بيتجاهل. وعلّم "نهائي" على القيم اللي معناها رفض نهائي من غير إعادة:</p>`
+      + vals.map((x, i) => `<div class="fb-check"><label class="fb-check" style="margin:0;"><input type="checkbox" data-i="${i}" ${rejectSet.has(x.v) || finalSet.has(x.v) ? "checked" : ""}> ${esc(x.v)} <span class="studio-hint">(${x.n})</span></label>
+          <label class="fb-check" style="margin:0 10px;"><input type="checkbox" data-f="${i}" ${finalSet.has(x.v) ? "checked" : ""}> <span class="studio-hint">نهائي</span></label></div>`).join("");
+    box.querySelectorAll("input[data-i]").forEach((inp) => inp.addEventListener("change", () => {
       const v = vals[Number(inp.dataset.i)].v;
-      if (inp.checked) rejectSet.add(v); else rejectSet.delete(v);
+      if (inp.checked) rejectSet.add(v); else { rejectSet.delete(v); finalSet.delete(v); const f = box.querySelector(`input[data-f="${inp.dataset.i}"]`); if (f) f.checked = false; }
+    }));
+    box.querySelectorAll("input[data-f]").forEach((inp) => inp.addEventListener("change", () => {
+      const v = vals[Number(inp.dataset.f)].v;
+      if (inp.checked) { finalSet.add(v); rejectSet.add(v); const r = box.querySelector(`input[data-i="${inp.dataset.f}"]`); if (r) r.checked = true; } else finalSet.delete(v);
     }));
   }
 
@@ -297,7 +308,7 @@
     fillSelects(s, hr, keep);
   });
   ["label-col", "numbers-col", "desc-col", "file-col", "text-col"].forEach((id) => $(id).addEventListener("change", renderRaw));
-  $("status-col").addEventListener("change", () => { rejectSet = new Set(); renderStatusValues(); renderRaw(); });
+  $("status-col").addEventListener("change", () => { rejectSet = new Set(); finalSet = new Set(); renderStatusValues(); renderRaw(); });
   document.querySelectorAll('input[name="numbers-mode"]').forEach((r) => r.addEventListener("change", () => { toggleNumbersMode(); renderRaw(); }));
 
   function renderRaw() {
@@ -319,6 +330,7 @@
       labelType: document.querySelector('input[name="label-type"]:checked').value,
       numbersMode: numbersMode(), statusCol: $("status-col").value || "-1", rejectValues: JSON.stringify([...rejectSet]),
       fileCol: $("file-col").value || "-1", textCol: $("text-col").value || "-1", nameMap: JSON.stringify(nameMap),
+      finalValues: JSON.stringify([...finalSet]), allFinal: $("all-final").checked ? "1" : "0",
     };
   }
 
@@ -329,7 +341,7 @@
     if (m.labelCol === "") return showErr("map-error", "اختار عمود الاسم أو ملف الـ ZIP.");
     if (m.numbersMode === "column" && m.numbersCol === "") return showErr("map-error", "اختار عمود أرقام التسجيلات.");
     if (m.numbersMode === "match" && Number(m.fileCol) < 0 && Number(m.textCol) < 0) return showErr("map-error", "اختار عمود اسم الملف أو عمود نص الجملة.");
-    if (Number(m.statusCol) >= 0 && !rejectSet.size) return showErr("map-error", "علّم على القيم اللي معناها \"مرفوض\" في عمود الحالة.");
+    if (Number(m.statusCol) >= 0 && !rejectSet.size && !finalSet.size) return showErr("map-error", "علّم على القيم اللي معناها \"مرفوض\" في عمود الحالة.");
     const btn = $("preview-btn");
     btn.disabled = true; btn.textContent = "جاري المعاينة...";
     try {
@@ -386,6 +398,7 @@
       <span class="studio-pill status-approved">✅ ${summary.ok} صف صالح</span>
       <span class="studio-pill ${summary.errors ? "status-rejected" : "status-pending"}">${summary.errors ? "❌" : "✓"} ${summary.errors} فيهم مشكلة (مش هيتطبقوا)</span>
       <span class="studio-pill status-pending">👥 ${summary.sessions} متسجّل</span>
+      ${summary.final ? `<span class="studio-pill status-rejected">🚫 ${summary.final} رفض نهائي (من غير إعادة)</span>` : ""}
       ${summary.ignored ? `<span class="studio-pill status-pending">🙈 ${summary.ignored} صف اتجاهل (${ign})</span>` : ""}
       <span class="studio-hint">المهمة "${esc(task.title)}" فيها ${sampleCount} تسجيل لكل متسجّل</span>`;
     $("result-table").innerHTML = `
@@ -427,7 +440,10 @@
     const { summary } = lastPreview;
     const hours = StudioHours.get($("fb-hours"));
     if (hours !== null && !StudioHours.valid(hours)) return showErr("apply-error", `اكتب مهلة الإعادة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`);
-    if (!confirm(`هتبعت فيدباك لـ ${summary.sessions} متسجّل (${summary.ok} صف). التسجيلات المذكورة بس هترجعلهم للإعادة وبيبدأ عداد المهلة (${hoursLabel()}). تكمل؟`)) return;
+    const finals = summary.final || 0;
+    if (finals && finals === summary.ok) { if (!confirm(`هتسجّل رفض نهائي لـ ${summary.sessions} متسجّل (${summary.ok} صف). مفيش إعادة ومفيش عداد. تكمل؟`)) return; }
+    else if (finals) { if (!confirm(`هتبعت فيدباك لـ ${summary.sessions} متسجّل (${summary.ok} صف)، منهم ${finals} صف رفض نهائي من غير إعادة. الباقي بيرجع للإعادة وبيبدأ عداد المهلة (${hoursLabel()}). تكمل؟`)) return; }
+    else if (!confirm(`هتبعت فيدباك لـ ${summary.sessions} متسجّل (${summary.ok} صف). التسجيلات المذكورة بس هترجعلهم للإعادة وبيبدأ عداد المهلة (${hoursLabel()}). تكمل؟`)) return;
     const btn = $("apply-btn");
     btn.disabled = true; btn.textContent = "جاري التطبيق...";
     try {
@@ -435,7 +451,9 @@
       if ((lastPreview.warnings || []).length) m.confirmWarnings = "1";
       if (hours !== null) m.reworkHours = String(hours);
       const r = await NMStudio.apiFeedbackApply(file, m);
-      toast(`✅ اتسجّل فيدباك على <b>${r.sessions}</b> متسجّل (${r.samples} تسجيل). عداد ${r.reworkHours} ساعة بدأ.${r.skipped.length ? ` اتخطّينا ${r.skipped.length} صف فيه مشكلة.` : ""}`);
+      toast(r.finalItems && !r.samples
+        ? `✅ اتسجّل رفض نهائي على <b>${r.sessions}</b> متسجّل (${r.finalItems} صف).${r.skipped.length ? ` اتخطّينا ${r.skipped.length} صف فيه مشكلة.` : ""}`
+        : `✅ اتسجّل فيدباك على <b>${r.sessions}</b> متسجّل (${r.samples} تسجيل). عداد ${r.reworkHours} ساعة بدأ.${r.finalItems ? ` + ${r.finalItems} صف رفض نهائي.` : ""}${r.skipped.length ? ` اتخطّينا ${r.skipped.length} صف فيه مشكلة.` : ""}`);
       $("step-preview").classList.add("hidden");
       $("step-map").classList.add("hidden");
       $("file-input").value = ""; file = null; lastPreview = null;
@@ -467,7 +485,7 @@
         <div class="studio-table-wrap"><table class="studio-table">
           <thead><tr><th>المتسجّل</th><th>الليدر</th><th>التسجيلات</th><th>المشكلة</th><th>اتسجّل في</th><th>الحالة</th><th>المهلة</th></tr></thead>
           <tbody>${list.map((i) => {
-            const st = i.overdue ? ["status-rejected", "⏰ متأخر"] : (STATUS[i.status] || ["", i.status]);
+            const st = i.is_final ? ["status-rejected", "🚫 رفض نهائي"] : i.overdue ? ["status-rejected", "⏰ متأخر"] : (STATUS[i.status] || ["", i.status]);
             const left = (i.status === "reworked" || i.status === "expired") ? "" : NMStudio.timeLeft(i.rework_deadline);
             return `<tr>
               <td><span class="studio-code">${esc(i.fake_name)}</span><br>${esc(i.real_name || "")}<br><span class="fb-email">${esc(i.email || "")}</span></td>
@@ -476,7 +494,7 @@
               <td>${esc(i.issue_description || "—")}</td>
               <td>${esc(new Date(i.created_at).toLocaleString("ar-EG", { timeZone: TZ, dateStyle: "medium", timeStyle: "short" }))}</td>
               <td><span class="studio-pill ${st[0]}">${st[1]}</span></td>
-              <td class="${left && left.overdue ? "fb-late" : ""}">${i.status === "reworked" ? esc(new Date(i.reworked_at).toLocaleString("ar-EG", { timeZone: TZ, dateStyle: "short", timeStyle: "short" })) : i.status === "expired" ? "الاسم اتسحب" : esc(left.text)}</td>
+              <td class="${left && left.overdue ? "fb-late" : ""}">${i.status === "reworked" ? esc(new Date(i.reworked_at).toLocaleString("ar-EG", { timeZone: TZ, dateStyle: "short", timeStyle: "short" })) : i.is_final ? "—" : i.status === "expired" ? "الاسم اتسحب" : esc(left.text)}</td>
             </tr>`;
           }).join("")}</tbody>
         </table></div>`).join("");
