@@ -198,6 +198,7 @@
   let lastPreview = null;
   let rejectSet = new Set();   // the status values that mean "send it back"
   let finalSet = new Set();    // status values that mean "rejected for good" (v5)
+  let namesOpen = null;        // null = open only while some name needs a look; afterwards it stays as the head leader left it
   let nameMap = {};            // names picked by hand: label in the sheet -> session id (checked again by the server)
 
   function toast(html, bad) {
@@ -227,7 +228,7 @@
     const btn = $("parse-btn");
     btn.disabled = true; btn.textContent = "جاري القراءة...";
     try {
-      nameMap = {};
+      nameMap = {}; namesOpen = null;
       sheets = (await NMStudio.apiFeedbackParse(file, $("task-select").value)).sheets;
       $("sheet-select").innerHTML = sheets.map((s, i) => `<option value="${i}">${esc(s.name)} (${s.rowCount} صف)</option>`).join("");
       $("sheet-field").classList.toggle("hidden", sheets.length < 2);
@@ -359,30 +360,50 @@
     return `<span class="fb-how ${m.how === "text" && m.note ? "weak" : ""}">${esc(m.text)}${m.speed ? " · " + esc(m.speed) : ""}<br>${sure}</span>`;
   }
 
-  // names the sheet uses that matched nobody: pick the right person once, the choice applies to all that name's rows
+  // name matching: EVERY name in the sheet, who the system matched it to (and how sure), and a list — the task's own
+  // talents only — to change it. Problems come first (the server sorts them).
+  const SYM = { male: "♂", female: "♀" };
+  const HOW = {
+    exact: "✅ الاسم كامل", prefix: "✅ الاسم كامل", first: "✅ بالاسم الأول", second: "✅ بالاسم الأول والتاني",
+    extras: "⚠️ بالسن/النوع", manual: "✋ اخترته بإيدك",
+  };
   function renderNames() {
     const box = $("names-box");
-    const groups = new Map();
-    (lastPreview.results || []).filter((r) => r.unmatchedName || r.viaManual).forEach((r) => {
-      const g = groups.get(r.label) || { label: r.label, n: 0, sugg: r.suggestions || [] };
-      g.n++; if ((r.suggestions || []).length) g.sugg = r.suggestions; groups.set(r.label, g);
-    });
-    const bad = [...groups.values()].filter((g) => !nameMap[g.label]);
-    if (!groups.size) { box.innerHTML = ""; return; }
+    const names = lastPreview.names || [];
+    if (!names.length) { box.innerHTML = ""; return; }
     const people = lastPreview.people || [];
-    const lab = (p) => `${p.fakeName}${p.gender ? " — " + (p.gender === "male" ? "♂" : "♀") : ""}${p.age != null ? " — " + p.age : ""}`;
-    box.innerHTML = `<div class="fb-names"><b>🔎 أسماء في الملف مش لاقيلها متسجّل (${bad.length})</b>
-      <p class="studio-hint" style="margin:4px 0 8px;">اختار المتسجّل الصح لكل اسم، والاختيار بيتطبق على كل صفوف الاسم ده.</p>
-      <table>${[...groups.values()].map((g, i) => {
-        const near = g.sugg.map((p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`).join("");
-        const all = people.map((p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`).join("");
-        return `<tr><td class="fb-email">${esc(g.label)}</td><td>${g.n} صف</td>
-          <td><select data-label="${esc(g.label)}" data-i="${i}"><option value="">— اختار المتسجّل —</option>${near ? `<option disabled>الأقرب</option>${near}<option disabled>كل المتسجّلين</option>` : ""}${all}</select></td></tr>`;
-      }).join("")}</table></div>`;
+    const lab = (p) => `${p.fakeName}${p.gender ? " — " + SYM[p.gender] : ""}${p.age != null ? " — " + p.age : ""}`;
+    const opt = (p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`;
+    const byId = new Map(people.map((p) => [p.id, p]));
+    let none = 0, review = 0, sure = 0;
+    const rows = names.map((e) => {
+      const chosen = nameMap[e.label] || e.sessionId || "";
+      const problem = !chosen ? "none" : (e.how === "extras" || e.conflict) ? "review" : "sure";
+      if (problem === "none") none++; else if (problem === "review") review++; else sure++;
+      const near = (e.suggestions || []).map((id) => byId.get(id)).filter(Boolean);
+      const nearIds = new Set(near.map((p) => p.id));
+      const sel = chosen && byId.get(chosen) && !nearIds.has(chosen) ? [byId.get(chosen)] : [];
+      const first = [...sel, ...near];
+      const badge = !chosen ? `<span class="fb-err">❌ مش لاقي متسجّل</span>` : `<span class="${problem === "review" ? "fb-how weak" : "fb-ok"}">${HOW[e.how] || HOW.exact}</span>`;
+      const c = e.conflict ? `<span class="fb-how weak">⚠️ الملف بيقول: ${SYM[e.conflict.file.gender] || ""} ${esc(e.conflict.file.age || "")}</span><span class="fb-how weak">المتسجّل: ${SYM[e.person.gender] || ""} ${e.person.age == null ? "" : esc(e.person.age)}</span>` : "";
+      return `<tr><td class="fb-email">${esc(e.label)}</td><td>${e.rows} صف</td>
+        <td><select data-label="${esc(e.label)}"><option value="">— اختار المتسجّل —</option>${first.length ? `<option disabled>الأقرب</option>${first.map(opt).join("")}` : ""}<option disabled>كل مشاركي المهمة</option>${people.map(opt).join("")}</select></td>
+        <td>${badge}${c}</td></tr>`;
+    });
+    const isOpen = namesOpen === null ? none + review > 0 : namesOpen;
+    box.innerHTML = `<details class="fb-names" ${isOpen ? "open" : ""}>
+      <summary><b>🔎 مطابقة الأسماء</b>
+        <span class="studio-pill status-approved">✅ ${sure} متأكد</span>
+        ${review ? `<span class="studio-pill status-pending">⚠️ ${review} محتاج مراجعة</span>` : ""}
+        ${none ? `<span class="studio-pill status-rejected">❌ ${none} مش لاقيين</span>` : ""}</summary>
+      <p class="studio-hint" style="margin:8px 0;">راجع كل اسم. لو السيستم غلط، اختار المتسجّل الصح من القايمة (فيها اللي اشتغلوا في التاسك ده بس)، والاختيار بيتطبق على كل صفوف الاسم ده.</p>
+      <table><thead><tr><th>الاسم في الملف</th><th>الصفوف</th><th>المتسجّل</th><th>المطابقة</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
+    box.querySelector("details").addEventListener("toggle", (ev) => { namesOpen = ev.target.open; });
     box.querySelectorAll("select").forEach((sel) => {
-      if (nameMap[sel.dataset.label]) sel.value = nameMap[sel.dataset.label];
+      const e = names.find((x) => x.label === sel.dataset.label);
+      sel.value = nameMap[e.label] || e.sessionId || "";
       sel.addEventListener("change", async () => {
-        if (sel.value) nameMap[sel.dataset.label] = sel.value; else delete nameMap[sel.dataset.label];
+        if (sel.value) nameMap[e.label] = sel.value; else delete nameMap[e.label];
         try { lastPreview = await NMStudio.apiFeedbackPreview(file, mapping()); renderPreview(false); }
         catch (err) { showErr("map-error", err.message); }
       });
