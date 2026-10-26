@@ -1023,5 +1023,7 @@ window.STUDIO_I18N = { en: {
   "راجع كل اسم. لو السيستم غلط، اختار المتسجّل الصح من القايمة (فيها اللي اشتغلوا في التاسك ده بس)، والاختيار بيتطبق على كل صفوف الاسم ده.": "Check each name. If the system got it wrong, pick the right talent from the list (only people who worked on this task); the choice applies to every row with that name.",
   "كل مشاركي المهمة": "All talents in this task",
   "الصفوف": "Rows",
+  "الصفوف:": "Rows:",
+  "❌ صفوف مش هتتبعت": "❌ Rows that will not be sent",
   "المطابقة": "Match",
 } };

@@ -158,6 +158,7 @@
     <h3>3) المعاينة</h3>
     <div class="fb-summary" id="summary"></div>
     <div id="names-box"></div>
+    <div id="bad-box"></div>
     <div id="warn-box"></div>
     <div class="studio-table-wrap"><table class="studio-table" id="result-table"></table></div>
     <div class="studio-field" style="margin-top:14px; max-width:320px;">
@@ -425,8 +426,8 @@
       <span class="studio-hint">المهمة "${esc(task.title)}" فيها ${sampleCount} تسجيل لكل متسجّل</span>`;
     $("result-table").innerHTML = `
       <thead><tr><th>صف</th><th>الاسم في الملف</th><th>المتسجّل</th><th>الليدر</th><th>التسجيلات</th><th>المشكلة</th><th>النتيجة</th></tr></thead>
-      <tbody>${results.map((r) => `
-        <tr class="${r.ok ? "" : "fb-row-bad"}">
+      <tbody>${results.filter((r) => r.ok).map((r) => `
+        <tr>
           <td>${esc(r.row)}</td>
           <td class="fb-email">${esc(r.label)}</td>
           <td>${r.session ? `<span class="studio-code">${esc(r.session.fakeName)}</span><br>${esc(r.session.realName || "")}<br><span class="fb-email">${esc(r.session.email || "")}</span>` : "—"}</td>
@@ -435,6 +436,16 @@
           <td>${esc(r.description || "—")}</td>
           <td>${r.ok ? `<span class="fb-ok">✓ جاهز</span>` : `<span class="fb-err">${esc(r.message)}</span>`}</td>
         </tr>`).join("")}</tbody>`;
+    // rows with a problem are not listed one by one: just why, how many, and which rows
+    const bad = new Map();
+    for (const r of results.filter((x) => !x.ok)) {
+      const k = r.message || "";
+      if (!bad.has(k)) bad.set(k, { n: 0, rows: [], names: !!r.unmatchedName });
+      const g = bad.get(k); g.n++; if (g.rows.length < 6) g.rows.push(r.row);
+    }
+    $("bad-box").innerHTML = bad.size
+      ? `<div class="fb-warn"><b>❌ صفوف مش هتتبعت</b><ul>${[...bad].map(([m, g]) => `<li><span class="fb-err">${esc(m)}</span> — <b>${g.n}</b> <span>صف</span>${g.names ? "" : ` (<span>الصفوف:</span> ${g.rows.join("، ")}${g.n > g.rows.length ? "…" : ""})`}</li>`).join("")}</ul></div>`
+      : "";
     $("warn-box").innerHTML = warnings.length
       ? `<div class="fb-warn"><b>⚠️ راجع قبل التطبيق</b><ul>${warnings.map((w) => `<li>${esc(w.message)}</li>`).join("")}</ul>
            <label class="fb-check"><input type="checkbox" id="warn-ok"> فاهم التحذيرات وعايز أكمّل</label></div>`
