@@ -377,17 +377,18 @@
     const byId = new Map(people.map((p) => [p.id, p]));
     let none = 0, review = 0, sure = 0;
     const rows = names.map((e) => {
-      const chosen = nameMap[e.label] || e.sessionId || "";
+      const excluded = nameMap[e.label] === "none";
+      const chosen = excluded ? "" : (nameMap[e.label] || e.sessionId || "");
       const problem = !chosen ? "none" : (e.how === "extras" || e.conflict) ? "review" : "sure";
       if (problem === "none") none++; else if (problem === "review") review++; else sure++;
       const near = (e.suggestions || []).map((id) => byId.get(id)).filter(Boolean);
       const nearIds = new Set(near.map((p) => p.id));
       const sel = chosen && byId.get(chosen) && !nearIds.has(chosen) ? [byId.get(chosen)] : [];
       const first = [...sel, ...near];
-      const badge = !chosen ? `<span class="fb-err">❌ مش لاقي متسجّل</span>` : `<span class="${problem === "review" ? "fb-how weak" : "fb-ok"}">${HOW[e.how] || HOW.exact}</span>`;
+      const badge = excluded ? `<span class="fb-err">🚫 ألغيت المطابقة</span>` : !chosen ? `<span class="fb-err">❌ مش لاقي متسجّل</span>` : `<span class="${problem === "review" ? "fb-how weak" : "fb-ok"}">${HOW[e.how] || HOW.exact}</span>`;
       const c = e.conflict ? `<span class="fb-how weak">⚠️ الملف بيقول: ${SYM[e.conflict.file.gender] || ""} ${esc(e.conflict.file.age || "")}</span><span class="fb-how weak">المتسجّل: ${SYM[e.person.gender] || ""} ${e.person.age == null ? "" : esc(e.person.age)}</span>` : "";
       return `<tr><td class="fb-email">${esc(e.label)}</td><td>${e.rows} صف</td>
-        <td><select data-label="${esc(e.label)}"><option value="">— اختار المتسجّل —</option>${first.length ? `<option disabled>الأقرب</option>${first.map(opt).join("")}` : ""}<option disabled>كل مشاركي المهمة</option>${people.map(opt).join("")}</select></td>
+        <td><select data-label="${esc(e.label)}"><option value="">${excluded ? "↺ رجّع المطابقة التلقائية" : "— اختار المتسجّل —"}</option>${chosen ? `<option value="none">🚫 مش هو — إلغاء المطابقة</option>` : ""}${excluded ? `<option value="none">🚫 مش هو (ملغي)</option>` : ""}${first.length ? `<option disabled>الأقرب</option>${first.map(opt).join("")}` : ""}<option disabled>كل مشاركي المهمة</option>${people.map(opt).join("")}</select></td>
         <td>${badge}${c}</td></tr>`;
     });
     const isOpen = namesOpen === null ? none + review > 0 : namesOpen;
