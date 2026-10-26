@@ -78,6 +78,7 @@
     <div id="rework-banner" class="hidden studio-card" style="background:#3A1A00; border-color:var(--studio-warn); margin-bottom:16px;">
       <p class="mb-0" style="color:var(--studio-warn); font-weight:700;">⚠️ التاسك ده محتاج إعادة لبعض الجمل بس</p>
       <p class="studio-hint mb-0" id="rework-reason-text" style="margin-top:4px;"></p>
+      <ol id="rework-list" style="list-style:none; padding:0; margin:10px 0 0;"></ol>
       <p class="mb-0" id="rework-deadline-text" style="margin-top:6px; font-weight:700;"></p>
     </div>
     <div id="pending-banner" class="hidden rec-banner"></div>
@@ -107,6 +108,7 @@
 
     <div class="studio-card" id="sentence-card">
       <div class="studio-eyebrow text-center" id="sample-number">جملة 1</div>
+      <div class="hidden text-center" id="sample-reason" style="color:var(--studio-warn); font-weight:700; margin:6px 0;"></div>
       <div class="rec-sentence" id="sentence-text">—</div>
 
       <div id="reference-audio-wrap" class="hidden text-center" style="margin-bottom:18px;">
@@ -251,7 +253,7 @@
         reworkMode = true;
         activeSamples = samples.filter(s => s.qa_status === "rejected");
         $("rework-banner").classList.remove("hidden");
-        $("rework-reason-text").textContent = session.rejection_reason || "في تسجيلات محتاجة إعادة.";
+        $("rework-reason-text").innerHTML = `<b>${activeSamples.length}</b> <span>جملة محتاجة إعادة — دوس على أي جملة عشان تروحلها.</span>`;
         showReworkDeadline(session.rework_deadline);
       } else if (session.status !== "in_progress") {
         $("done-box").classList.remove("hidden");
@@ -301,11 +303,32 @@
 
   function isSampleDone(s) { return !!s.audio_file_url && s.qa_status !== "rejected" && !s.queued; }
 
+  function reasonHtml(t) { const d = document.createElement("span"); d.textContent = t; return d.innerHTML; }
+
+  // rework: every sentence to redo, one after another, each with its own reason (tap one to go to it)
+  function renderReworkList() {
+    const box = $("rework-list");
+    if (!reworkMode) { box.innerHTML = ""; return; }
+    box.innerHTML = activeSamples.map((s, i) => `
+      <li data-i="${i}" style="display:flex; gap:10px; align-items:flex-start; padding:8px 0; border-top:1px solid var(--studio-border); cursor:pointer; ${i === currentIndex ? "font-weight:700;" : ""}">
+        <span class="studio-code">${i + 1}</span>
+        <div style="flex:1;"><div>${reasonHtml(String(s.sentence_name || ""))}</div>
+          ${s.qa_reason ? `<div class="studio-hint"><span>السبب:</span> ${reasonHtml(s.qa_reason)}</div>` : ""}</div>
+        <span>${isSampleDone(s) ? "✅" : s.queued ? "⏫" : ""}</span>
+      </li>`).join("");
+    box.querySelectorAll("li").forEach((li) => li.addEventListener("click", () => {
+      if (isRecording) return;
+      currentIndex = Number(li.dataset.i); renderSample();
+      $("sentence-card").scrollIntoView({ behavior: "smooth", block: "center" });
+    }));
+  }
+
   function updateProgress() {
     const done = activeSamples.filter(isSampleDone).length;
     const queued = activeSamples.filter(s => s.queued).length;
     $("progress-fill").style.width = `${(done / activeSamples.length) * 100}%`;
     $("progress-text").textContent = `${done} / ${activeSamples.length}`;
+    renderReworkList();
     $("sample-dots").innerHTML = activeSamples.map((s, i) =>
       `<span class="rec-sample-dot ${isSampleDone(s) ? "done" : (s.queued ? "queued" : "")} ${i === currentIndex ? "current" : ""}"></span>`
     ).join("");
@@ -375,6 +398,8 @@
     const s = activeSamples[currentIndex];
     $("sample-number").textContent = `جملة ${currentIndex + 1} من ${activeSamples.length}`;
     $("sentence-text").textContent = s.sentence_name;
+    const rs = $("sample-reason");
+    if (reworkMode && s.qa_reason) { rs.innerHTML = `⚠️ <span>السبب:</span> ${reasonHtml(s.qa_reason)}`; rs.classList.remove("hidden"); } else rs.classList.add("hidden");
 
     loadReference(s);
 

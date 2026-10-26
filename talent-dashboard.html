@@ -118,20 +118,29 @@
       const withdrawn = items.filter(i => i.status === "expired" && !i.is_final);
       const finals = items.filter(i => i.is_final);
       if (!active.length && !withdrawn.length && !finals.length) return;
+      // one entry per recording session (not per sheet row): the distinct sentences to redo and the soonest deadline
+      const byToken = new Map();
+      for (const i of active) {
+        let g = byToken.get(i.session_token);
+        if (!g) { g = { token: i.session_token, title: i.task_title, numbers: new Set(), deadline: i.rework_deadline, canRework: false }; byToken.set(i.session_token, g); }
+        (i.recording_numbers || []).forEach(n => g.numbers.add(n));
+        if (i.rework_deadline && (!g.deadline || new Date(i.rework_deadline) < new Date(g.deadline))) g.deadline = i.rework_deadline;
+        if (i.session_status === "rejected") g.canRework = true;
+      }
+      const groups = [...byToken.values()];
       wrap.innerHTML = `
         <h3 style="margin-top:0;">📩 فيدباك من الشركة على شغلك</h3>
         ${active.length ? `<p class="studio-hint">الشركة طلبت إعادة تسجيلات معيّنة. سجّلها وسلّمها <b>قبل ما المهلة تخلص</b> — لو خلصت من غير تسليم، الاسم بيتسحب منك ويتاح لحد تاني.</p>` : ""}
-        ${active.map(i => {
-          const t = NMTalent.timeLeft(i.rework_deadline);
+        ${groups.map(g => {
+          const t = NMTalent.timeLeft(g.deadline);
           return `
           <div style="border-top:1px solid var(--studio-border); padding:12px 0; display:flex; gap:12px; justify-content:space-between; align-items:center; flex-wrap:wrap;">
             <div>
-              <b>${escapeHtml(i.task_title)}</b>
-              <div style="margin:6px 0;">التسجيلات المطلوبة: ${(i.recording_numbers || []).map(n => `<span class="studio-code" style="margin:0 2px;">${n}</span>`).join("")}</div>
-              ${i.issue_description ? `<div class="studio-hint">المشكلة: ${escapeHtml(i.issue_description)}</div>` : ""}
-              <div style="margin-top:4px; font-weight:700; color:${t.overdue ? "var(--studio-danger)" : "var(--studio-warn)"};">⏰ ${escapeHtml(t.text)}</div>
+              <b>${escapeHtml(g.title)}</b>
+              <div style="margin:6px 0;"><b>${g.numbers.size}</b> <span>تسجيل محتاج إعادة</span></div>
+              <div style="font-weight:700; color:${t.overdue ? "var(--studio-danger)" : "var(--studio-warn)"};">⏰ ${escapeHtml(t.text)}</div>
             </div>
-            ${i.session_status === "rejected" ? `<a href="recording.html?session=${encodeURIComponent(i.session_token)}" class="studio-btn studio-btn-primary" style="padding:8px 16px;">🔁 إعادة التسجيل</a>` : ""}
+            ${g.canRework ? `<a href="recording.html?session=${encodeURIComponent(g.token)}" class="studio-btn studio-btn-primary" style="padding:8px 16px;">🔁 إعادة التسجيل</a>` : ""}
           </div>`;
         }).join("")}
         ${finals.map(i => `
