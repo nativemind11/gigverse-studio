@@ -39,7 +39,12 @@
     }
     let data = null;
     try { data = await res.json(); } catch (_) {}
-    if (!res.ok) throw new Error((data && data.error) || "حصل خطأ غير متوقع.");
+    if (!res.ok) {
+      const err = new Error((data && data.error) || "حصل خطأ غير متوقع.");
+      err.status = res.status;
+      err.code = data && data.code;       // e.g. "task_locked", "wrong_password"
+      throw err;
+    }
     return data;
   }
 
@@ -106,15 +111,30 @@
     return ms >= 0 ? { text: `باقي ${span}`, overdue: false } : { text: `المهلة خلصت من ${span}`, overdue: true };
   }
 
+  // v10: a password-protected task. The unlock token (valid 12 h, only for this task and this talent) is kept for the
+  // life of the tab — it is what the server asks for before it lists names / codes or starts a session.
+  function unlockKey(taskId) { return `studio_task_unlock_${taskId}`; }
+  function getUnlock(taskId) { try { return sessionStorage.getItem(unlockKey(taskId)) || ""; } catch (_) { return ""; } }
+  function setUnlock(taskId, token) {
+    try { if (token) sessionStorage.setItem(unlockKey(taskId), token); else sessionStorage.removeItem(unlockKey(taskId)); } catch (_) {}
+  }
+  async function unlockTask(taskId, password) {
+    const data = await apiFetch(`/api/studio/talent/tasks/${taskId}/unlock`, { method: "POST", body: JSON.stringify({ password }) });
+    setUnlock(taskId, data.unlockToken || "");
+    return data;
+  }
+
   function getTasks() { return apiFetch("/api/studio/talent/tasks"); }
   function getTaskDetail(taskId) { return apiFetch(`/api/studio/talent/tasks/${taskId}`); }
   function getAvailableFakeNames(taskId, gender, bracket) {
     const q = [gender ? "gender=" + encodeURIComponent(gender) : "", bracket ? "bracket=" + encodeURIComponent(bracket) : ""].filter(Boolean).join("&");
-    return apiFetch(`/api/studio/talent/tasks/${taskId}/fake-names${q ? "?" + q : ""}`);
+    const unlock = getUnlock(taskId);
+    return apiFetch(`/api/studio/talent/tasks/${taskId}/fake-names${q ? "?" + q : ""}`, unlock ? { headers: { "X-Task-Unlock": unlock } } : {});
   }
 
   function createSession(payload) {
-    return apiFetch("/api/studio/talent/sessions", { method: "POST", body: JSON.stringify(payload) });
+    const unlock = payload && payload.taskId ? getUnlock(payload.taskId) : "";
+    return apiFetch("/api/studio/talent/sessions", { method: "POST", body: JSON.stringify(unlock ? { ...payload, unlockToken: unlock } : payload) });
   }
   function getSession(token) { return apiFetch(`/api/studio/talent/sessions/${token}`); }
   function uploadSampleAudio(token, sampleId, file, duration) {
@@ -132,7 +152,7 @@
   }
 
   window.NMTalent = {
-    getTasks, getTaskDetail, getAvailableFakeNames,
+    getTasks, getTaskDetail, getAvailableFakeNames, unlockTask, getUnlock, setUnlock,
     createSession, getSession, uploadSampleAudio, submitSession,
     saveSessionToken, loadSessionToken,
     authToken, currentTalent, saveSession, logout, requireLogin,

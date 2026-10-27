@@ -41,6 +41,23 @@
     <div class="studio-eyebrow">بياناتك</div>
     <h1 class="studio-title" id="task-title">جاري التحميل...</h1>
 
+    <!-- v10: a password-protected task asks for its password first; everything below stays hidden until it is typed -->
+    <div id="gate" class="hidden">
+      <div style="font-size:2rem; margin-bottom:6px;">🔒</div>
+      <h3 style="margin:0 0 6px;">المهمة دي محمية بكلمة سر</h3>
+      <p class="studio-subtitle" style="margin-bottom:12px;">اكتب كلمة السر اللي اتبعتتلك عشان تفتح المهمة وتكمل.</p>
+      <div class="studio-field">
+        <label for="gate-password">كلمة السر</label>
+        <div style="display:flex; gap:8px;">
+          <input type="password" id="gate-password" autocomplete="off" dir="ltr" style="flex:1;">
+          <button type="button" class="studio-btn studio-btn-secondary" id="gate-toggle">إظهار</button>
+        </div>
+      </div>
+      <p class="studio-error" id="gate-error"></p>
+      <button type="button" class="studio-btn studio-btn-primary studio-btn-block" id="gate-btn">فتح المهمة</button>
+    </div>
+
+    <div id="main-form">
     <!-- v8: gender / age / age group come from the account — nothing to choose here, only to confirm -->
     <div id="my-data" class="hidden" style="background:var(--studio-surface-2); border-radius:12px; padding:12px 14px; margin-bottom:16px;">
       <div id="my-data-rows" style="display:grid; grid-template-columns:auto 1fr; gap:6px 14px; align-items:baseline;"></div>
@@ -58,6 +75,7 @@
     <p class="studio-error" id="final-error"></p>
     <button type="button" class="studio-btn studio-btn-primary studio-btn-block" id="start-btn" disabled>🎙️ ابدأ التسجيل</button>
     <button type="button" class="studio-btn studio-btn-secondary studio-btn-block hidden" id="relogin-btn" style="margin-top:10px;">إنشاء حساب جديد</button>
+    </div>
   </div>
 </main>
 
@@ -116,6 +134,7 @@
         select.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
       }
     } catch (err) {
+      if (err.code === "task_locked") { showGate("كلمة السر اتغيّرت أو انتهت صلاحيتها. اكتبها تاني."); return; }
       select.innerHTML = `<option value="">تعذر التحميل</option>`;
     }
     refreshButton();
@@ -140,6 +159,7 @@
       errorBox.textContent = err.message;
       errorBox.style.display = "block";
       btn.textContent = "🎙️ ابدأ التسجيل";
+      if (err.code === "task_locked") { showGate("كلمة السر اتغيّرت أو انتهت صلاحيتها. اكتبها تاني."); return; }
       if (err.message.includes("الاسم") || err.message.includes("الكود")) { if (!isReal()) loadFakeNames(); }
       // somebody took the last place a second before: reload the places left
       else if (err.message.includes("الاكتفاء") || err.message.includes("مش مطلوبين")) { await refreshTask(); }
@@ -165,6 +185,46 @@
     refreshButton();
   }
 
+  // ---- v10: password gate
+  function showGate(message) {
+    NMTalent.setUnlock(taskId, "");
+    $("main-form").classList.add("hidden");
+    $("gate").classList.remove("hidden");
+    const box = $("gate-error");
+    if (message) { box.textContent = message; box.style.display = "block"; } else box.style.display = "none";
+    $("gate-password").value = "";
+    $("gate-password").focus();
+  }
+  async function enterTask() {
+    $("gate").classList.add("hidden");
+    $("main-form").classList.remove("hidden");
+    if (isReal()) $("real-note").classList.remove("hidden");
+    else { $("tab-fake-name").classList.remove("hidden"); await loadFakeNames(); }
+    refreshButton();
+  }
+  $("gate-toggle").addEventListener("click", () => {
+    const inp = $("gate-password"), show = inp.type === "password";
+    inp.type = show ? "text" : "password";
+    $("gate-toggle").textContent = show ? "إخفاء" : "إظهار";
+  });
+  async function submitGate() {
+    const box = $("gate-error"), btn = $("gate-btn"), pw = $("gate-password").value;
+    box.style.display = "none";
+    if (!pw.trim()) { box.textContent = "اكتب كلمة السر"; box.style.display = "block"; return; }
+    btn.disabled = true; btn.textContent = "جاري التحقق...";
+    try {
+      await NMTalent.unlockTask(taskId, pw);
+      await enterTask();
+    } catch (err) {
+      box.textContent = err.message; box.style.display = "block";
+      $("gate-password").select();
+    } finally {
+      btn.disabled = false; btn.textContent = "فتح المهمة";
+    }
+  }
+  $("gate-btn").addEventListener("click", submitGate);
+  $("gate-password").addEventListener("keydown", (e) => { if (e.key === "Enter") { e.preventDefault(); submitGate(); } });
+
   (async function init() {
     try { me = await NMTalent.getMe(); } catch (err) { me = NMTalent.currentTalent(); }
     if (!me || !me.gender || !me.age) {
@@ -179,9 +239,9 @@
     renderMyData();
     await refreshTask();
     if (!task) return;
-    if (isReal()) $("real-note").classList.remove("hidden");
-    else { $("tab-fake-name").classList.remove("hidden"); await loadFakeNames(); }
-    refreshButton();
+    // a protected task: ask for the password first (unless this tab already unlocked it)
+    if (task.password_protected && !NMTalent.getUnlock(taskId)) { showGate(); return; }
+    await enterTask();
   })();
 </script>
 </body>

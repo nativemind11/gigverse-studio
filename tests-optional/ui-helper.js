@@ -3,7 +3,7 @@ const fs = require("fs");
 const path = require("path");
 const ROOT = path.join(__dirname, "..") + "/";
 // Loads a page with every <script src> inlined and fetch mocked. routes: [[regex, (url, opts) => ({status, body})]]
-async function load(page, { lang = "ar", storage = {}, routes = [], search = "" } = {}) {
+async function load(page, { lang = "ar", storage = {}, session = {}, routes = [], search = "" } = {}) {
   let html = fs.readFileSync(ROOT + page, "utf8");
   html = html.replace(/<script src="([^"]+)"><\/script>/g, (_, src) => `<script>${fs.readFileSync(ROOT + src, "utf8")}</script>`);
   const calls = [];
@@ -12,9 +12,10 @@ async function load(page, { lang = "ar", storage = {}, routes = [], search = "" 
     beforeParse(w) {
       w.localStorage.setItem("studio_lang", lang);
       for (const [k, v] of Object.entries(storage)) w.localStorage.setItem(k, v);
+      for (const [k, v] of Object.entries(session)) w.sessionStorage.setItem(k, v);
       w.fetch = async (url, opts = {}) => {
         const path = String(url).replace(/^https?:\/\/[^/]+/, "");
-        calls.push({ path, method: opts.method || "GET", body: opts.body && typeof opts.body === "string" ? JSON.parse(opts.body) : opts.body });
+        calls.push({ path, method: opts.method || "GET", headers: opts.headers || {}, body: opts.body && typeof opts.body === "string" ? JSON.parse(opts.body) : opts.body });
         for (const [re, fn] of routes) if (re.test(path)) { const r = fn(path, opts); return { ok: r.status < 400, status: r.status, json: async () => r.body }; }
         return { ok: false, status: 404, json: async () => ({ error: "no route " + path }) };
       };

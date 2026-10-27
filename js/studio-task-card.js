@@ -59,6 +59,8 @@
     if (limited && !allFull) meta += '<span class="tc-meta-item"><span>متبقي</span> ' + num(totalLeft, totalMax) + "</span>";
     else if (!limited && t.quantity) meta += '<span class="tc-meta-item"><span>العدد المتاح</span> <b dir="ltr">' + Math.max(t.quantity - (t.submission_count || 0), 0) + "</b></span>";
 
+    if (t.password_protected) meta += '<span class="tc-meta-item">🔒 <span>محمية بكلمة سر</span></span>';
+
     var overall = limited && !allFull ? '<span class="tc-bar tc-total ' + level(p) + '"><i style="width:' + p + '%"></i></span>' : "";
     var button = opts.button !== undefined ? opts.button : "";
     return '<article class="tc' + (allFull ? " is-full" : "") + '">' +

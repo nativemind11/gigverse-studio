@@ -58,6 +58,18 @@
       <p class="studio-hint" style="margin-top:6px;">بتظهر للمتسجّل قبل أول جملة، ولازم يدوس "فهمت" عشان يبدأ.</p>
     </div>
 
+    <div class="studio-field">
+      <label class="fb-check"><input type="checkbox" id="t-lock"> حماية المهمة بكلمة سر</label>
+      <div id="t-lock-box" class="hidden" style="margin-top:8px;">
+        <label for="t-password">كلمة سر المهمة</label>
+        <div style="display:flex; gap:8px;">
+          <input type="text" id="t-password" autocomplete="off" dir="ltr" placeholder="4 حروف أو أرقام على الأقل" style="flex:1;">
+          <button type="button" class="studio-btn studio-btn-secondary" id="t-password-gen">توليد</button>
+        </div>
+        <p class="studio-hint" style="margin-top:6px;">المهمة بتفضل تظهر لكل الناس عند الليدرز اللي اخترتهم، بس أي حد يفتحها بيتطلب منه كلمة السر الأول. كلمة السر مش بتتعرض تاني بعد الحفظ، فاحتفظ بيها عندك. وتقدر تغيّرها أو تلغيها بعد كده من تعديل المهمة.</p>
+      </div>
+    </div>
+
     <div class="studio-card" style="background:var(--studio-surface-2); padding:14px; margin-bottom:18px;">
       <h3 style="margin:0 0 10px;">نظام المهمة</h3>
       <div class="studio-grid cols-2">
@@ -299,6 +311,7 @@
   });
 
   let createdTask = null;
+  let createdPassword = "";            // shown once on the review step — the server keeps only a hash
   let currentSamples = [];
   let namesUploaded = false;
   let scriptsUploaded = 0;       // per-person tasks: how many script files are in
@@ -322,6 +335,16 @@
     document.getElementById("per-leader-toggle").classList.toggle("hidden", direct);   // a direct task has no leaders
     renderLeaderQuotaInputs();
   }
+  // v10: task password — the box opens with the checkbox; "توليد" fills a random easy-to-read password
+  document.getElementById("t-lock").addEventListener("change", (e) => {
+    document.getElementById("t-lock-box").classList.toggle("hidden", !e.target.checked);
+    if (e.target.checked) document.getElementById("t-password").focus();
+  });
+  document.getElementById("t-password-gen").addEventListener("click", () => {
+    const abc = "abcdefghjkmnpqrstuvwxyz23456789", pick = new Uint32Array(8);
+    (window.crypto || window.msCrypto).getRandomValues(pick);
+    document.getElementById("t-password").value = Array.from(pick, (n) => abc[n % abc.length]).join("");
+  });
   ["t-direct", "t-script-mode"].forEach((id) => document.getElementById(id).addEventListener("change", syncModes));
 
   // scripts for anybody, or split: one set for boys and one for girls
@@ -540,6 +563,14 @@
     const scriptMode = document.getElementById("t-script-mode").value;
     const identityMode = document.getElementById("t-identity-mode").value;
     const direct = document.getElementById("t-direct").checked;
+    // v10: optional task password
+    const lockOn = document.getElementById("t-lock").checked;
+    const accessPassword = lockOn ? document.getElementById("t-password").value.trim() : "";
+    if (lockOn && accessPassword.length < 4) {
+      errorBox.textContent = "اكتب كلمة سر للمهمة (4 حروف أو أرقام على الأقل) أو شيل علامة الحماية.";
+      errorBox.style.display = "block";
+      return;
+    }
     const useReferenceAudio = scriptMode === "per_person" ? false : document.getElementById("t-ref-audio").checked;
     const btn = document.getElementById("step1-btn");
     btn.disabled = true; btn.textContent = "جاري الإنشاء...";
@@ -549,6 +580,7 @@
         instructions: document.getElementById("t-instructions").value,
         reworkHours, idleHours,
         useAgeBrackets, useReferenceAudio, scriptMode, identityMode, direct,
+        ...(accessPassword ? { accessPassword } : {}),
         quotas: collectQuotas(),
         ...(leaderQuotas ? { leaderQuotas } : {}),
         sampleRate: document.getElementById("t-sample-rate").value,
@@ -557,6 +589,7 @@
         channels: document.getElementById("t-channels").value,
         leaderIds: direct ? [] : leaderIds,
       });
+      createdPassword = accessPassword;
       leaderCount = direct ? 0 : leaderIds.length;
       leaderQuotaSummary = leaderQuotas ? leaderQuotas.map(l => ({ ...l, code: (leadersCache.find(x => x.id === l.leaderId) || {}).leader_code || "" })) : [];
       document.getElementById("ref-audio-section").classList.toggle("hidden", !useReferenceAudio);
@@ -694,6 +727,7 @@
       <p><strong>مهلة إعادة التسجيل:</strong> ${createdTask.rework_hours} ساعة</p>
       <p><strong>مهلة الجلسة الساكتة:</strong> ${createdTask.idle_hours || 8} ساعة</p>
       <p><strong>تعليمات للمتسجّل:</strong> ${createdTask.instructions ? "فيه" : "مفيش"}</p>
+      <p><strong>كلمة سر المهمة:</strong> ${createdTask.password_protected ? `<span>مفعّلة</span> <b dir="ltr" class="studio-code">${escapeHtml(createdPassword)}</b>` : "<span>مفيش</span>"}</p>
       <p class="mb-0"><strong>الإعدادات:</strong> ${createdTask.recording_settings.sampleRate}Hz, ${createdTask.recording_settings.bitDepth}bit, ${createdTask.recording_settings.format.toUpperCase()}, ${createdTask.recording_settings.channels}</p>
       <div id="add-leader-box" class="${leaderCount || createdTask.direct ? "hidden" : ""}" style="margin-top:14px;">
         <p class="studio-error" style="display:block;">المهمة لسه من غير ليدر. اختار ليدر واحد على الأقل قبل النشر.</p>

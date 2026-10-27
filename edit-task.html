@@ -118,6 +118,26 @@
       <p class="studio-error" id="basic-error"></p>
       <p class="studio-success" id="basic-success"></p>
       <button type="button" class="studio-btn studio-btn-primary" id="basic-save">حفظ الأساسيات</button>
+
+      <!-- v10: task password. Saved on its own (never together with the basics), and never shown back: only replaced or removed -->
+      <div class="studio-card" id="lock-card" style="background:var(--studio-surface-2); padding:14px; margin-top:20px;">
+        <h3 style="margin:0 0 6px;">كلمة سر المهمة</h3>
+        <p class="studio-hint" id="lock-state" style="margin:0 0 12px;"></p>
+        <div class="studio-field" style="margin-bottom:10px;">
+          <label for="e-password">كلمة السر الجديدة</label>
+          <div style="display:flex; gap:8px;">
+            <input type="text" id="e-password" autocomplete="off" dir="ltr" placeholder="4 حروف أو أرقام على الأقل" style="flex:1;">
+            <button type="button" class="studio-btn studio-btn-secondary" id="e-password-gen">توليد</button>
+          </div>
+          <p class="studio-hint" style="margin-top:6px;">لما تغيّر كلمة السر، اللي كتبوا القديمة لازم يكتبوا الجديدة عشان يبدأوا. واللي بدأوا تسجيل قبل كده بيكملوا عادي.</p>
+        </div>
+        <p class="studio-error" id="lock-error"></p>
+        <p class="studio-success" id="lock-success"></p>
+        <div style="display:flex; gap:8px; flex-wrap:wrap;">
+          <button type="button" class="studio-btn studio-btn-primary" id="lock-save">حفظ كلمة السر</button>
+          <button type="button" class="studio-btn studio-btn-secondary hidden" id="lock-remove" style="color:var(--studio-danger); border-color:currentColor;">إلغاء الحماية</button>
+        </div>
+      </div>
     </div>
 
     <!-- 1b) system modes -->
@@ -354,6 +374,7 @@
     StudioHours.set($("e-rework"), task.rework_hours || 12);
     StudioHours.set($("e-idle"), task.idle_hours || 8);
     $("e-ref-audio").checked = task.use_reference_audio !== false;
+    renderLock();
     $("q-brackets").checked = !!task.use_age_brackets;
     const rs = task.recording_settings || {};
     $("e-difficulty").value = task.difficulty || "medium";
@@ -362,6 +383,48 @@
     $("e-format").value = rs.format || "wav";
     $("e-channels").value = rs.channels || "mono";
   }
+  // ------------------------------------------------------------- 1b) task password (v10)
+  function renderLock() {
+    const on = !!task.password_protected;
+    $("lock-state").textContent = on
+      ? "🔒 المهمة دي محمية بكلمة سر. كلمة السر مش بتتعرض، تقدر تحط واحدة جديدة أو تلغي الحماية."
+      : "المهمة دي مفتوحة من غير كلمة سر. لو حطيت كلمة سر، أي حد يفتح المهمة هيتطلب منه يكتبها الأول.";
+    $("lock-save").textContent = on ? "تغيير كلمة السر" : "حفظ كلمة السر";
+    $("lock-remove").classList.toggle("hidden", !on);
+  }
+  $("e-password-gen").addEventListener("click", () => {
+    const abc = "abcdefghjkmnpqrstuvwxyz23456789", pick = new Uint32Array(8);
+    (window.crypto || window.msCrypto).getRandomValues(pick);
+    $("e-password").value = Array.from(pick, (n) => abc[n % abc.length]).join("");
+  });
+  $("lock-save").addEventListener("click", async function () {
+    clearMsgs("lock-error", "lock-success");
+    const pw = $("e-password").value.trim();
+    if (pw.length < 4) return showMsg("lock-error", "اكتب كلمة السر الجديدة (4 حروف أو أرقام على الأقل).");
+    await busy(this, "جاري الحفظ...", async () => {
+      try {
+        task = await NMStudio.apiUpdateTask(taskId, { accessPassword: pw });
+        $("e-password").value = "";
+        renderLock();
+        flashOk("lock-success", "✓ اتحفظت كلمة السر");
+      } catch (err) { showMsg("lock-error", err.message); }
+    });
+    renderLock();      // busy() puts the old button label back, so draw the right one again
+  });
+  $("lock-remove").addEventListener("click", async function () {
+    clearMsgs("lock-error", "lock-success");
+    if (!confirm("متأكد إنك عايز تلغي كلمة السر؟ المهمة هتبقى مفتوحة لأي حد من غير كلمة سر.")) return;
+    await busy(this, "جاري الحفظ...", async () => {
+      try {
+        task = await NMStudio.apiUpdateTask(taskId, { accessPassword: null });
+        $("e-password").value = "";
+        renderLock();
+        flashOk("lock-success", "✓ اتلغت الحماية، المهمة بقت مفتوحة");
+      } catch (err) { showMsg("lock-error", err.message); }
+    });
+    renderLock();      // busy() puts the old button label back, so draw the right one again
+  });
+
   $("basic-save").addEventListener("click", async function () {
     clearMsgs("basic-error", "basic-success");
     const title = $("e-title").value.trim();

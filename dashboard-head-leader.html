@@ -139,7 +139,7 @@
             <tbody>
               ${tasks.map(t => `
                 <tr>
-                  <td>${escapeHtml(t.title)}</td>
+                  <td>${escapeHtml(t.title)}${t.password_protected ? ' <span title="محمية بكلمة سر">🔒</span>' : ""}</td>
                   <td><span class="studio-pill ${t.status === "published" ? "status-approved" : ""}">${STATUS_LABELS[t.status] || t.status}</span></td>
                   <td>${t.script_mode === "per_person" ? `<span dir="ltr">${t.script_count}</span> <span>سكريبت</span>` : t.sample_count}</td>
                   <td>${t.direct ? "<span>مباشر</span>" : t.leader_count}</td>
