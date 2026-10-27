@@ -74,8 +74,10 @@
           <select id="t-identity-mode">
             <option value="names" selected>أسامي مستعارة (ملف واحد)</option>
             <option value="codes">أكواد (قايمة للولاد وقايمة للبنات)</option>
+            <option value="real">الأسامي الحقيقية للمتسجّلين (من حسابهم)</option>
           </select>
           <p class="studio-hint" style="margin-top:6px;">الكود بيظهر على الملفات المسلّمة بدل الاسم المستعار، والمتسجّل بيشوف أكواد نوعه بس.</p>
+          <p class="studio-hint" style="margin-top:6px;">الأسامي الحقيقية: مفيش ملف ترفعه. اسم الملف بيطلع باسم المتسجّل بالإنجليزي ونوعه وسنّه وفئته العمرية من حسابه.</p>
         </div>
       </div>
       <label class="fb-check" style="margin-top:12px;"><input type="checkbox" id="t-direct"> نشر مباشر من غير ليدر (المتسجّل بيدخل على المهمة على طول)</label>
@@ -274,9 +276,10 @@
 
   const isPerPerson = () => createdTask && createdTask.script_mode === "per_person";
   const isCodes = () => createdTask && createdTask.identity_mode === "codes";
+  const isReal = () => createdTask && createdTask.identity_mode === "real";     // nothing to upload: the account's own name is used
   function maybeEnableStep2() {
     const scriptOk = isPerPerson() ? scriptsUploaded > 0 : currentSamples.length > 0;
-    const identityOk = isCodes() ? codesUploaded : namesUploaded;
+    const identityOk = isReal() ? true : isCodes() ? codesUploaded : namesUploaded;
     document.getElementById("step2-btn").disabled = !(scriptOk && identityOk);
   }
 
@@ -507,7 +510,7 @@
       document.getElementById("ref-audio-section").classList.toggle("hidden", !useReferenceAudio);
       document.getElementById("script-shared-box").classList.toggle("hidden", scriptMode === "per_person");
       document.getElementById("script-multi-box").classList.toggle("hidden", scriptMode !== "per_person");
-      document.getElementById("identity-names-box").classList.toggle("hidden", identityMode === "codes");
+      document.getElementById("identity-names-box").classList.toggle("hidden", identityMode !== "names");
       document.getElementById("identity-codes-box").classList.toggle("hidden", identityMode !== "codes");
       document.getElementById("step-1").classList.add("hidden");
       document.getElementById("step-2").classList.remove("hidden");
@@ -634,7 +637,7 @@
         `<li><span class="studio-code" style="font-size:0.75rem;">${escapeHtml(l.code)}</span> — ` +
         l.quotas.filter(q => q.max > 0).map(q => `<span>${GENDER_AR[q.gender]}</span>${q.ageBracket ? ` <span>${BRACKET_AR[q.ageBracket]}</span>` : ""}: <span dir="ltr">${q.max}</span>`).join(" • ") + `</li>`).join("")}</ul>` : ""}
       <p><strong>${isPerPerson() ? "عدد السكريبتات:" : "عدد الجمل:"}</strong> ${isPerPerson() ? scriptsUploaded : currentSamples.length}</p>
-      <p><strong>الهوية:</strong> <span>${isCodes() ? "أكواد" : "أسامي مستعارة"}</span>${createdTask.direct ? ` • <span>نشر مباشر من غير ليدر</span>` : ""}</p>
+      <p><strong>الهوية:</strong> <span>${isReal() ? "أسامي حقيقية" : isCodes() ? "أكواد" : "أسامي مستعارة"}</span>${createdTask.direct ? ` • <span>نشر مباشر من غير ليدر</span>` : ""}</p>
       <p><strong>مهلة إعادة التسجيل:</strong> ${createdTask.rework_hours} ساعة</p>
       <p><strong>مهلة الجلسة الساكتة:</strong> ${createdTask.idle_hours || 8} ساعة</p>
       <p><strong>تعليمات للمتسجّل:</strong> ${createdTask.instructions ? "فيه" : "مفيش"}</p>

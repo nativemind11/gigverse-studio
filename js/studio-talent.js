@@ -68,10 +68,11 @@
     return data;
   }
 
-  async function signup(name, email, password) {
+  // v8: the account carries the real data (English name, gender, age). The age bracket is worked out by the server.
+  async function signup(name, email, password, gender, age) {
     const data = await apiFetch("/api/studio/auth/talent/signup", {
       method: "POST",
-      body: JSON.stringify({ name, email, password }),
+      body: JSON.stringify({ name, email, password, gender, age }),
     });
     saveSession(data.token, data.user);
     return data;
@@ -84,6 +85,13 @@
     });
     saveSession(data.token, data.user);
     return data;
+  }
+
+  // The live account row (gender / age / age bracket live here since v8); the copy kept in the browser is refreshed too.
+  async function getMe() {
+    const data = await apiFetch("/api/studio/auth/me");
+    if (data && data.user && authToken()) localStorage.setItem("studio_talent_user", JSON.stringify(data.user));
+    return data.user;
   }
 
   function getMySessions() { return apiFetch("/api/studio/talent/me/sessions"); }
@@ -125,6 +133,6 @@
     createSession, getSession, uploadSampleAudio, submitSession,
     saveSessionToken, loadSessionToken,
     authToken, currentTalent, saveSession, logout, requireLogin,
-    signup, login, getMySessions, getMyFeedback, timeLeft,
+    signup, login, getMe, getMySessions, getMyFeedback, timeLeft,
   };
 })();

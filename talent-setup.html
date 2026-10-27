@@ -38,37 +38,26 @@
 
 <main class="studio-shell">
   <div class="studio-card">
-    <div class="studio-eyebrow" id="step-label">خطوة 1 من 4</div>
+    <div class="studio-eyebrow">بياناتك</div>
     <h1 class="studio-title" id="task-title">جاري التحميل...</h1>
 
-    <!-- step 1: gender -->
-    <div id="tab-gender">
-      <p class="studio-subtitle">اختار نوعك</p>
-      <div class="studio-grid cols-2" id="gender-buttons"></div>
+    <!-- v8: gender / age / age group come from the account — nothing to choose here, only to confirm -->
+    <div id="my-data" class="hidden" style="background:var(--studio-surface-2); border-radius:12px; padding:12px 14px; margin-bottom:16px;">
+      <div id="my-data-rows" style="display:grid; grid-template-columns:auto 1fr; gap:6px 14px; align-items:baseline;"></div>
     </div>
+    <p class="studio-hint" id="slot-note"></p>
 
-    <!-- step 2: age bracket (only when the task uses age brackets) -->
-    <div id="tab-age-bracket" class="hidden">
-      <p class="studio-subtitle">اختار الفئة العمرية</p>
-      <div class="studio-grid cols-3" id="bracket-buttons"></div>
-    </div>
-
-    <!-- step 3: fake name -->
+    <!-- fake-name / code tasks only: pick one. Real-name tasks skip this: the file carries the account's name -->
     <div id="tab-fake-name" class="hidden">
       <p class="studio-subtitle" id="name-subtitle">اختار اسم مستعار (مش هيظهر حد تاني بيه)</p>
       <select id="fake-name-select" style="margin-bottom:14px;"></select>
-      <button type="button" class="studio-btn studio-btn-primary studio-btn-block" onclick="confirmFakeName()">التالي</button>
     </div>
 
-    <!-- step 4: age -->
-    <div id="tab-age" class="hidden">
-      <p class="studio-subtitle">سنّك بالظبط؟</p>
-      <div class="studio-field">
-        <input type="number" id="age-input" min="1" max="120" placeholder="مثال: 27">
-      </div>
-      <p class="studio-error" id="final-error"></p>
-      <button type="button" class="studio-btn studio-btn-primary studio-btn-block" id="start-btn">🎙️ ابدأ التسجيل</button>
-    </div>
+    <p class="studio-hint hidden" id="real-note">اسمك الحقيقي هو اللي هيظهر في اسم الملف.</p>
+
+    <p class="studio-error" id="final-error"></p>
+    <button type="button" class="studio-btn studio-btn-primary studio-btn-block" id="start-btn" disabled>🎙️ ابدأ التسجيل</button>
+    <button type="button" class="studio-btn studio-btn-secondary studio-btn-block hidden" id="relogin-btn" style="margin-top:10px;">إنشاء حساب جديد</button>
   </div>
 </main>
 
@@ -80,102 +69,85 @@
   if (!taskId) location.href = "tasks.html";          // leaderId is missing on purpose for direct tasks (checked once the task loads)
   NMTalent.requireLogin(location.pathname + location.search);
 
-  const answers = { gender: null, ageBracket: null, fakeName: null, age: null };
   let task = null;                       // the task with its places left (slots)
-  let STEPS = ["tab-gender", "tab-fake-name", "tab-age"];
-  let stepIndex = 0;
+  let me = null;                         // the live account: name, gender, age, age_bracket
+  const $ = (id) => document.getElementById(id);
+  const GENDER_AR = { male: "ذكر", female: "أنثى" };
+  const BRACKET_AR = { child: "طفل", adult: "بالغ", elderly: "مسن" };
+  const isReal = () => task && task.identity_mode === "real";
+  const useCodes = () => task && task.identity_mode === "codes";
 
-  const GENDERS = [["male", "👨 ذكر"], ["female", "👩 أنثى"]];
-  const BRACKETS = [["child", "🧒 طفل"], ["adult", "🧑 بالغ"], ["elderly", "🧓 مسن"]];
+  // places left for THIS talent's own gender (and age group when the task uses them); null = no limit on the task
+  function myRemaining() {
+    if (!task || !task.limited || !me) return null;
+    const list = task.slots.filter(s => s.gender === me.gender && (!task.use_age_brackets || s.ageBracket === me.age_bracket));
+    return list.reduce((n, s) => n + (s.max === 0 ? 0 : s.remaining), 0);
+  }
 
-  // a slot = the places for one gender (and one age bracket when the task uses them)
-  function slotsOf(gender, bracket) {
-    if (!task || !task.limited) return null;                              // no limit on this task
-    return task.slots.filter(s => s.gender === gender && (bracket === undefined || s.ageBracket === bracket));
+  function renderMyData() {
+    const row = (k, v, ltr) => `<span class="studio-hint" style="margin:0;">${k}</span><b${ltr ? ' dir="ltr" style="text-align:start;"' : ""}>${v}</b>`;
+    $("my-data-rows").innerHTML =
+      row("<span>الاسم</span>", escapeHtml(me.name), true) +
+      row("<span>النوع</span>", `<span>${GENDER_AR[me.gender]}</span>`) +
+      row("<span>السن</span>", String(me.age), true) +
+      row("<span>الفئة العمرية</span>", `<span>${BRACKET_AR[me.age_bracket] || ""}</span>`);
+    $("my-data").classList.remove("hidden");
   }
-  function remaining(gender, bracket) {
-    const list = slotsOf(gender, bracket);
-    return list === null ? null : list.reduce((n, s) => n + (s.max === 0 ? 0 : s.remaining), 0);
-  }
-  function optionHtml(label, left, onclick, padding) {
+  function escapeHtml(s) { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
+
+  function refreshButton() {
+    const left = myRemaining();
     const full = left !== null && left <= 0;
-    return `<button type="button" class="studio-btn studio-btn-secondary" style="padding:${padding}px;" ${full ? "disabled" : `onclick="${onclick}"`}>
-      <span>${label}</span><br>
-      <small>${left === null ? "" : full ? "<span>تم الاكتفاء</span>" : `<span>متبقي</span> <span dir="ltr">${left}</span>`}</small></button>`;
-  }
-  function renderOptions() {
-    document.getElementById("gender-buttons").innerHTML = GENDERS.map(([g, label]) => optionHtml(label, remaining(g), `pick('gender','${g}')`, 22)).join("");
-    document.getElementById("bracket-buttons").innerHTML = BRACKETS
-      .map(([b, label]) => optionHtml(label, remaining(answers.gender, b), `pick('ageBracket','${b}')`, 18)).join("");
-  }
-
-  function showStep(i) {
-    STEPS.forEach((id, idx) => document.getElementById(id).classList.toggle("hidden", idx !== i));
-    document.getElementById("step-label").textContent = `خطوة ${i + 1} من ${STEPS.length}`;
-  }
-
-  function pick(field, value) {
-    answers[field] = value;
-    if (field === "gender") {
-      answers.ageBracket = null;
-      STEPS = task && task.use_age_brackets ? ["tab-gender", "tab-age-bracket", "tab-fake-name", "tab-age"] : ["tab-gender", "tab-fake-name", "tab-age"];
-      renderOptions();
-    }
-    stepIndex++;
-    if (STEPS[stepIndex] === "tab-fake-name") loadFakeNames();
-    showStep(stepIndex);
+    $("slot-note").innerHTML = full ? `<span>تم الاكتفاء</span>` : left === null ? "" : `<span>متبقي</span> <span dir="ltr">${left}</span>`;
+    const needsPick = !isReal();
+    const picked = !needsPick || !!$("fake-name-select").value;
+    $("start-btn").disabled = full || !picked;
   }
 
   async function loadFakeNames() {
-    const select = document.getElementById("fake-name-select");
-    select.innerHTML = `<option>جاري التحميل...</option>`;
-    const useCodes = task && task.identity_mode === "codes";
-    document.getElementById("name-subtitle").textContent = useCodes ? "اختار الكود بتاعك" : "اختار اسم مستعار (مش هيظهر حد تاني بيه)";
+    const select = $("fake-name-select");
+    select.innerHTML = `<option value="">جاري التحميل...</option>`;
+    $("name-subtitle").textContent = useCodes() ? "اختار الكود بتاعك" : "اختار اسم مستعار (مش هيظهر حد تاني بيه)";
     try {
-      const names = await NMTalent.getAvailableFakeNames(taskId, answers.gender);
+      const names = await NMTalent.getAvailableFakeNames(taskId, me.gender);
       if (!names.length) {
-        select.innerHTML = useCodes ? `<option value="">مفيش أكواد متاحة دلوقتي</option>` : `<option value="">مفيش أسامي متاحة دلوقتي</option>`;
-        return;
+        select.innerHTML = useCodes() ? `<option value="">مفيش أكواد متاحة دلوقتي</option>` : `<option value="">مفيش أسامي متاحة دلوقتي</option>`;
+      } else {
+        select.innerHTML = names.map(n => `<option value="${escapeHtml(n)}">${escapeHtml(n)}</option>`).join("");
       }
-      select.innerHTML = names.map(n => `<option value="${n}">${n}</option>`).join("");
     } catch (err) {
       select.innerHTML = `<option value="">تعذر التحميل</option>`;
     }
+    refreshButton();
   }
 
-  function confirmFakeName() {
-    const select = document.getElementById("fake-name-select");
-    if (!select.value) return;
-    answers.fakeName = select.value;
-    stepIndex++;
-    showStep(stepIndex);
-  }
+  $("fake-name-select").addEventListener("change", refreshButton);
 
-  document.getElementById("start-btn").addEventListener("click", async () => {
-    const errorBox = document.getElementById("final-error");
+  $("start-btn").addEventListener("click", async () => {
+    const errorBox = $("final-error");
     errorBox.style.display = "none";
-    answers.age = document.getElementById("age-input").value || null;
-    const btn = document.getElementById("start-btn");
+    const btn = $("start-btn");
     btn.disabled = true; btn.textContent = "جاري البدء...";
     try {
+      // gender / age / age group are NOT sent: the server reads them from the account
       const { session } = await NMTalent.createSession({
         taskId, ...(leaderId ? { leaderId } : {}),
-        gender: answers.gender,
-        ageBracket: answers.ageBracket,
-        age: answers.age,
-        fakeName: answers.fakeName,
+        ...(isReal() ? {} : { fakeName: $("fake-name-select").value }),
       });
       NMTalent.saveSessionToken(taskId, session.session_token);
       location.href = `recording.html?session=${session.session_token}`;
     } catch (err) {
       errorBox.textContent = err.message;
       errorBox.style.display = "block";
-      btn.disabled = false; btn.textContent = "🎙️ ابدأ التسجيل";
-      if (err.message.includes("الاسم") || err.message.includes("الكود")) { stepIndex = STEPS.indexOf("tab-fake-name"); showStep(stepIndex); loadFakeNames(); }
-      // somebody took the last place a second before: reload the places and start again from the first step
-      if (err.message.includes("الاكتفاء") || err.message.includes("مش مطلوبين")) { refreshTask().then(() => { stepIndex = 0; showStep(0); }); }
+      btn.textContent = "🎙️ ابدأ التسجيل";
+      if (err.message.includes("الاسم") || err.message.includes("الكود")) { if (!isReal()) loadFakeNames(); }
+      // somebody took the last place a second before: reload the places left
+      else if (err.message.includes("الاكتفاء") || err.message.includes("مش مطلوبين")) { await refreshTask(); }
+      refreshButton();
     }
   });
+
+  $("relogin-btn").addEventListener("click", () => { NMTalent.logout(); location.href = "talent-login.html?mode=signup"; });
 
   async function refreshTask() {
     try {
@@ -186,17 +158,31 @@
       const mine = detail.leaderSlots && leaderId && detail.leaderSlots[leaderId];
       if (mine && mine.limited) task = { ...task, limited: true, slots: mine.slots };
       if (!task.direct && !leaderId) { location.href = "tasks.html"; return; }   // a normal task needs the leader's code
-      document.getElementById("task-title").textContent = task.title;
+      $("task-title").textContent = task.title;
     } catch (_) {
-      document.getElementById("task-title").textContent = "بياناتك";
+      $("task-title").textContent = "بياناتك";
     }
-    renderOptions();
-    showStep(stepIndex);
+    refreshButton();
   }
 
-  window.pick = pick;
-  window.confirmFakeName = confirmFakeName;
-  refreshTask();
+  (async function init() {
+    try { me = await NMTalent.getMe(); } catch (err) { me = NMTalent.currentTalent(); }
+    if (!me || !me.gender || !me.age) {
+      // an account made before the real data existed: it has to be re-created once
+      $("task-title").textContent = "بياناتك ناقصة";
+      $("final-error").textContent = "حسابك ناقص بيانات (النوع والسن). اعمل حساب جديد ببياناتك وجرّب تاني.";
+      $("final-error").style.display = "block";
+      $("start-btn").classList.add("hidden");
+      $("relogin-btn").classList.remove("hidden");
+      return;
+    }
+    renderMyData();
+    await refreshTask();
+    if (!task) return;
+    if (isReal()) $("real-note").classList.remove("hidden");
+    else { $("tab-fake-name").classList.remove("hidden"); await loadFakeNames(); }
+    refreshButton();
+  })();
 </script>
 </body>
 </html>

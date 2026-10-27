@@ -137,6 +137,7 @@
           <select id="m-identity-mode">
             <option value="names">أسامي مستعارة (ملف واحد)</option>
             <option value="codes">أكواد (قايمة للولاد وقايمة للبنات)</option>
+            <option value="real">الأسامي الحقيقية للمتسجّلين (من حسابهم)</option>
           </select>
         </div>
       </div>
@@ -551,16 +552,17 @@
   // ------------------------------------------------------------- 3b/3c) system, scripts, codes
   const isPerPerson = () => task.script_mode === "per_person";
   const isCodes = () => task.identity_mode === "codes";
+  const isReal = () => task.identity_mode === "real";
   function renderSystem() {
     renderPublish();
     const pill = (t) => `<span class="studio-pill status-approved">${t}</span>`;
-    $("system-line").innerHTML = pill(isPerPerson() ? "سكريبت مختلف لكل متسجّل" : "سكريبت واحد لكل المتسجّلين") + pill(isCodes() ? "أكواد" : "أسامي مستعارة") + (task.direct ? pill("نشر مباشر من غير ليدر") : "");
+    $("system-line").innerHTML = pill(isPerPerson() ? "سكريبت مختلف لكل متسجّل" : "سكريبت واحد لكل المتسجّلين") + pill(isReal() ? "أسامي حقيقية" : isCodes() ? "أكواد" : "أسامي مستعارة") + (task.direct ? pill("نشر مباشر من غير ليدر") : "");
     $("leaders-card").classList.toggle("hidden", !!task.direct);
     $("samples-card").classList.toggle("hidden", isPerPerson());
     $("scripts-card").classList.toggle("hidden", !isPerPerson());
     $("codes-card").classList.toggle("hidden", !isCodes());
     $("shared-script-card").classList.toggle("hidden", isPerPerson());
-    $("names-card").classList.toggle("hidden", isCodes());
+    $("names-card").classList.toggle("hidden", isCodes() || isReal());
     $("m-script-mode").value = task.script_mode || "shared";
     $("m-identity-mode").value = task.identity_mode || "names";
     $("m-direct").checked = !!task.direct;
