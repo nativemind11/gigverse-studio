@@ -187,8 +187,26 @@
     <div id="script-multi-box" class="hidden">
       <p class="studio-subtitle">اختار كل ملفات السكريبتات مرة واحدة. كل ملف txt = سكريبت واحد، وكل سطر فيه جملة. الترتيب حسب اسم الملف (script1 قبل script2 قبل script10).</p>
       <div class="studio-field">
+        <label for="t-scripts-for">السكريبتات دي لمين؟</label>
+        <select id="t-scripts-for">
+          <option value="any" selected>أي متسجّل (ولاد وبنات)</option>
+          <option value="split">مقسّمة: سكريبتات للولاد وسكريبتات للبنات</option>
+        </select>
+        <p class="studio-hint" style="margin-top:6px;">لو قسّمتهم، الولد بياخد سكريبت من سكريبتات الولاد بس، والبنت من سكريبتات البنات بس. وتقدر تغيّر نوع أي سكريبت بعد كده من صفحة تعديل المهمة.</p>
+      </div>
+      <div id="scripts-any-box" class="studio-field">
         <label for="t-scripts-files">ملفات السكريبتات (.txt)</label>
         <input type="file" id="t-scripts-files" accept=".txt" multiple>
+      </div>
+      <div id="scripts-split-box" class="studio-grid cols-2 hidden">
+        <div class="studio-field">
+          <label for="t-scripts-files-male">سكريبتات الولاد (.txt)</label>
+          <input type="file" id="t-scripts-files-male" accept=".txt" multiple>
+        </div>
+        <div class="studio-field">
+          <label for="t-scripts-files-female">سكريبتات البنات (.txt)</label>
+          <input type="file" id="t-scripts-files-female" accept=".txt" multiple>
+        </div>
       </div>
       <p class="studio-error" id="scripts-error"></p>
       <p class="studio-success" id="scripts-success"></p>
@@ -210,8 +228,9 @@
 
     <div id="identity-codes-box" class="hidden">
       <h3 style="margin-top:0;">قوايم الأكواد</h3>
-      <p class="studio-subtitle">ملفين txt، كل كود في سطر لوحده: واحد للولاد وواحد للبنات. مينفعش كود يتكرر، ولا يبقى في القايمتين. كل كود بيتحجز لحظة ما يتختار.</p>
-      <div class="studio-grid cols-2">
+      <p class="studio-subtitle">كل كود في سطر لوحده. المتسجّل بيشوف أكواد نوعه بس (ولد أو بنت). مينفعش كود يتكرر، ولا يبقى في أكتر من قايمة. كل كود بيتحجز لحظة ما يتختار.</p>
+      <label class="fb-check hidden" id="codes-split-row" style="margin-bottom:12px;"><input type="checkbox" id="t-codes-split"> الأكواد مقسّمة كمان حسب الفئة العمرية (أطفال / بالغين / كبار سن)</label>
+      <div id="codes-plain-box" class="studio-grid cols-2">
         <div class="studio-field">
           <label for="t-codes-male">أكواد الولاد (.txt)</label>
           <input type="file" id="t-codes-male" accept=".txt">
@@ -219,6 +238,17 @@
         <div class="studio-field">
           <label for="t-codes-female">أكواد البنات (.txt)</label>
           <input type="file" id="t-codes-female" accept=".txt">
+        </div>
+      </div>
+      <div id="codes-split-box" class="hidden">
+        <p class="studio-hint" style="margin:0 0 8px;">ارفع قايمة لكل فئة محتاجها (مش لازم كلها). المتسجّل بيشوف أكواد نوعه وفئته العمرية بس.</p>
+        <div class="studio-grid cols-3">
+          <div class="studio-field"><label for="t-codes-male_child">ولاد — أطفال (.txt)</label><input type="file" id="t-codes-male_child" accept=".txt"></div>
+          <div class="studio-field"><label for="t-codes-male_adult">ولاد — بالغين (.txt)</label><input type="file" id="t-codes-male_adult" accept=".txt"></div>
+          <div class="studio-field"><label for="t-codes-male_elderly">ولاد — كبار سن (.txt)</label><input type="file" id="t-codes-male_elderly" accept=".txt"></div>
+          <div class="studio-field"><label for="t-codes-female_child">بنات — أطفال (.txt)</label><input type="file" id="t-codes-female_child" accept=".txt"></div>
+          <div class="studio-field"><label for="t-codes-female_adult">بنات — بالغين (.txt)</label><input type="file" id="t-codes-female_adult" accept=".txt"></div>
+          <div class="studio-field"><label for="t-codes-female_elderly">بنات — كبار سن (.txt)</label><input type="file" id="t-codes-female_elderly" accept=".txt"></div>
         </div>
       </div>
       <p class="studio-error" id="codes-error"></p>
@@ -294,17 +324,30 @@
   }
   ["t-direct", "t-script-mode"].forEach((id) => document.getElementById(id).addEventListener("change", syncModes));
 
+  // scripts for anybody, or split: one set for boys and one for girls
+  const scriptsSplit = () => document.getElementById("t-scripts-for").value === "split";
+  document.getElementById("t-scripts-for").addEventListener("change", () => {
+    document.getElementById("scripts-any-box").classList.toggle("hidden", scriptsSplit());
+    document.getElementById("scripts-split-box").classList.toggle("hidden", !scriptsSplit());
+  });
   document.getElementById("scripts-upload-btn").addEventListener("click", async () => {
     const errorBox = document.getElementById("scripts-error"), successBox = document.getElementById("scripts-success");
     errorBox.style.display = "none"; successBox.style.display = "none";
-    const files = document.getElementById("t-scripts-files").files;
-    if (!files.length) { errorBox.textContent = "اختار ملفات txt الأول."; errorBox.style.display = "block"; return; }
+    // what to send: [[gender, files], ...] — only the groups that have files
+    const groups = scriptsSplit()
+      ? [["male", document.getElementById("t-scripts-files-male").files], ["female", document.getElementById("t-scripts-files-female").files]].filter(([, f]) => f.length)
+      : [["any", document.getElementById("t-scripts-files").files]].filter(([, f]) => f.length);
+    if (!groups.length) { errorBox.textContent = "اختار ملفات txt الأول."; errorBox.style.display = "block"; return; }
     const btn = document.getElementById("scripts-upload-btn");
     btn.disabled = true; btn.textContent = "جاري الرفع...";
     try {
-      const result = await NMStudio.apiUploadScripts(createdTask.id, files, "replace");    // nobody has started yet, so re-uploading just replaces
+      // nobody has started yet, so uploading again just replaces: the first group clears what was uploaded before, the rest are added next to it
+      let result = null;
+      for (let i = 0; i < groups.length; i++) result = await NMStudio.apiUploadScripts(createdTask.id, groups[i][1], i === 0 ? "replace_all" : "append", groups[i][0]);
       scriptsUploaded = result.scriptCount;
-      successBox.innerHTML = `<span>✓ اترفع عدد السكريبتات:</span> <span dir="ltr">${result.scriptCount}</span>`;
+      const g = result.byGender || { male: 0, female: 0, any: 0 };
+      successBox.innerHTML = `<span>✓ اترفع عدد السكريبتات:</span> <span dir="ltr">${result.scriptCount}</span>` +
+        (g.male || g.female ? ` • <span>ولاد</span> <span dir="ltr">${g.male}</span> • <span>بنات</span> <span dir="ltr">${g.female}</span>` + (g.any ? ` • <span>أي حد</span> <span dir="ltr">${g.any}</span>` : "") : "");
       successBox.style.display = "block";
       maybeEnableStep2();
     } catch (err) {
@@ -314,17 +357,26 @@
     }
   });
 
+  const CODE_KEYS = ["male", "female", "male_child", "male_adult", "male_elderly", "female_child", "female_adult", "female_elderly"];
+  const codesSplit = () => document.getElementById("t-codes-split").checked;
+  document.getElementById("t-codes-split").addEventListener("change", () => {
+    document.getElementById("codes-plain-box").classList.toggle("hidden", codesSplit());
+    document.getElementById("codes-split-box").classList.toggle("hidden", !codesSplit());
+  });
   document.getElementById("codes-upload-btn").addEventListener("click", async () => {
     const errorBox = document.getElementById("codes-error"), successBox = document.getElementById("codes-success");
     errorBox.style.display = "none"; successBox.style.display = "none";
-    const male = document.getElementById("t-codes-male").files[0], female = document.getElementById("t-codes-female").files[0];
-    if (!male && !female) { errorBox.textContent = "اختار قايمة أكواد واحدة على الأقل."; errorBox.style.display = "block"; return; }
+    const wanted = codesSplit() ? CODE_KEYS.filter((k) => k.includes("_")) : ["male", "female"];
+    const lists = {};
+    wanted.forEach((k) => { const f = document.getElementById("t-codes-" + k).files[0]; if (f) lists[k] = f; });
+    if (!Object.keys(lists).length) { errorBox.textContent = "اختار قايمة أكواد واحدة على الأقل."; errorBox.style.display = "block"; return; }
     const btn = document.getElementById("codes-upload-btn");
     btn.disabled = true; btn.textContent = "جاري الرفع...";
     try {
-      const r = await NMStudio.apiUploadCodes(createdTask.id, { male, female }, "replace");
+      const r = await NMStudio.apiUploadCodes(createdTask.id, lists, "replace");
       codesUploaded = r.male + r.female > 0;
-      successBox.innerHTML = `<span>✓ اترفعت الأكواد:</span> <span>ولاد</span> <span dir="ltr">${r.male}</span> • <span>بنات</span> <span dir="ltr">${r.female}</span>`;
+      const part = (label, n, by) => `<span>${label}</span> <span dir="ltr">${n}</span>` + (by ? ` (<span>أطفال</span> <span dir="ltr">${by.child}</span> • <span>بالغين</span> <span dir="ltr">${by.adult}</span> • <span>كبار سن</span> <span dir="ltr">${by.elderly}</span>)` : "");
+      successBox.innerHTML = `<span>✓ اترفعت الأكواد:</span> ` + part("ولاد", r.male, r.byBracket && r.byBracket.male) + ` • ` + part("بنات", r.female, r.byBracket && r.byBracket.female);
       successBox.style.display = "block";
       maybeEnableStep2();
     } catch (err) {
@@ -512,6 +564,7 @@
       document.getElementById("script-multi-box").classList.toggle("hidden", scriptMode !== "per_person");
       document.getElementById("identity-names-box").classList.toggle("hidden", identityMode !== "names");
       document.getElementById("identity-codes-box").classList.toggle("hidden", identityMode !== "codes");
+      document.getElementById("codes-split-row").classList.toggle("hidden", !useAgeBrackets);   // codes by age group need the task to use age groups
       document.getElementById("step-1").classList.add("hidden");
       document.getElementById("step-2").classList.remove("hidden");
     } catch (err) {

@@ -106,13 +106,19 @@
     if (!res.ok) throw new Error((data && data.error) || "تعذر رفع الملفات");
     return data;
   }
-  function apiUploadScripts(taskId, files, mode) {
-    return apiUploadMany(`/api/studio/headleader/tasks/${taskId}/scripts`, Array.from(files).map((f) => ["files", f]), { mode: mode || "append" });
+  // gender (v9): "any" (default) | "male" | "female" = who the uploaded scripts are for.
+  // mode: "append" | "replace" (only the scripts of that gender group) | "replace_all" (every script of the task)
+  function apiUploadScripts(taskId, files, mode, gender) {
+    return apiUploadMany(`/api/studio/headleader/tasks/${taskId}/scripts`, Array.from(files).map((f) => ["files", f]), { mode: mode || "append", gender: gender || "any" });
   }
+  // decide who ALREADY uploaded scripts are for: gender = "male" | "female" | "any"
+  function apiAssignScripts(taskId, scriptIds, gender) {
+    return apiFetch(`/api/studio/headleader/tasks/${encodeURIComponent(taskId)}/scripts/assign`, { method: "POST", body: JSON.stringify({ scriptIds, gender }) });
+  }
+  // lists = { male, female } (plain lists) and/or { male_child, male_adult, male_elderly, female_child, female_adult, female_elderly } (split by age group)
+  const CODE_LIST_KEYS = ["male", "female", "male_child", "male_adult", "male_elderly", "female_child", "female_adult", "female_elderly"];
   function apiUploadCodes(taskId, lists, mode) {
-    const fields = [];
-    if (lists.male) fields.push(["male", lists.male]);
-    if (lists.female) fields.push(["female", lists.female]);
+    const fields = CODE_LIST_KEYS.filter((k) => lists[k]).map((k) => [k, lists[k]]);
     return apiUploadMany(`/api/studio/headleader/tasks/${taskId}/codes`, fields, { mode: mode || "replace" });
   }
   function apiUploadFakeNames(taskId, file) {
@@ -274,7 +280,7 @@
   window.NMStudio = {
     authToken, currentUser, currentRole, login, logout,
     apiFetch, refreshMe, requireStudioRole,
-    apiCreateTask, apiUploadScript, apiUploadScripts, apiUploadCodes, apiUploadFakeNames, apiUploadSampleAudio, apiUploadBulkSampleAudio, apiPublishTask,
+    apiCreateTask, apiUploadScript, apiUploadScripts, apiAssignScripts, apiUploadCodes, apiUploadFakeNames, apiUploadSampleAudio, apiUploadBulkSampleAudio, apiPublishTask,
     apiGetMyTasks, apiGetTaskDetail, apiGetLeaders, apiCreateQaReviewer, apiGetQaReviewers,
     apiGetPendingReviews, apiGetReviewDetail, apiApproveSession, apiRejectAllSession,
     apiSubmitReview, qaFetchSampleAudioUrl,

@@ -109,7 +109,7 @@
     select.innerHTML = `<option value="">جاري التحميل...</option>`;
     $("name-subtitle").textContent = useCodes() ? "اختار الكود بتاعك" : "اختار اسم مستعار (مش هيظهر حد تاني بيه)";
     try {
-      const names = await NMTalent.getAvailableFakeNames(taskId, me.gender);
+      const names = await NMTalent.getAvailableFakeNames(taskId, me.gender, me.age_bracket);   // codes split by age group: his own group only
       if (!names.length) {
         select.innerHTML = useCodes() ? `<option value="">مفيش أكواد متاحة دلوقتي</option>` : `<option value="">مفيش أسامي متاحة دلوقتي</option>`;
       } else {

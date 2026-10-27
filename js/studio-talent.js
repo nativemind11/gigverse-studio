@@ -108,7 +108,10 @@
 
   function getTasks() { return apiFetch("/api/studio/talent/tasks"); }
   function getTaskDetail(taskId) { return apiFetch(`/api/studio/talent/tasks/${taskId}`); }
-  function getAvailableFakeNames(taskId, gender) { return apiFetch(`/api/studio/talent/tasks/${taskId}/fake-names${gender ? "?gender=" + encodeURIComponent(gender) : ""}`); }
+  function getAvailableFakeNames(taskId, gender, bracket) {
+    const q = [gender ? "gender=" + encodeURIComponent(gender) : "", bracket ? "bracket=" + encodeURIComponent(bracket) : ""].filter(Boolean).join("&");
+    return apiFetch(`/api/studio/talent/tasks/${taskId}/fake-names${q ? "?" + q : ""}`);
+  }
 
   function createSession(payload) {
     return apiFetch("/api/studio/talent/sessions", { method: "POST", body: JSON.stringify(payload) });

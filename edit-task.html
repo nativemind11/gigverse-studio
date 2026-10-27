@@ -216,7 +216,22 @@
       <h3 style="margin-top:0;">السكريبتات</h3>
       <p class="studio-hint" style="margin-top:0;">كل متسجّل بياخد سكريبت واحد. تقدر تضيف سكريبتات جديدة في أي وقت، بس مينفعش تشيل أو تغيّر اللي اتحجز.</p>
       <p class="studio-hint" id="scripts-summary"></p>
+      <div id="scripts-assign-bar" style="display:flex; align-items:center; gap:8px; flex-wrap:wrap; margin-bottom:8px;">
+        <label class="fb-check" style="margin:0;"><input type="checkbox" id="scripts-pick-all"> تحديد كل المتاح</label>
+        <span class="studio-hint" style="margin:0;" id="scripts-picked"><span dir="ltr">0</span> <span>سكريبت متحدد</span></span>
+        <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.8rem;" data-assign="male">للولاد</button>
+        <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.8rem;" data-assign="female">للبنات</button>
+        <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.8rem;" data-assign="any">لأي حد</button>
+      </div>
       <div id="scripts-list" style="max-height:260px; overflow-y:auto; margin-bottom:12px;"></div>
+      <div class="studio-field">
+        <label for="add-scripts-for">السكريبتات الجديدة لمين؟</label>
+        <select id="add-scripts-for">
+          <option value="any" selected>أي متسجّل (ولاد وبنات)</option>
+          <option value="male">الولاد بس</option>
+          <option value="female">البنات بس</option>
+        </select>
+      </div>
       <div class="studio-field">
         <label for="add-scripts-files">إضافة سكريبتات (.txt — كل ملف سكريبت)</label>
         <input type="file" id="add-scripts-files" accept=".txt" multiple>
@@ -241,6 +256,18 @@
           <input type="file" id="add-codes-female" accept=".txt">
         </div>
       </div>
+      <div id="codes-split-card" class="hidden">
+        <p class="studio-hint" style="margin:6px 0;">أو ارفع الأكواد مقسّمة حسب الفئة العمرية (الفئات العمرية مفعّلة للمهمة دي):</p>
+        <div class="studio-grid cols-3">
+          <div class="studio-field"><label for="add-codes-male_child">ولاد — أطفال (.txt)</label><input type="file" id="add-codes-male_child" accept=".txt"></div>
+          <div class="studio-field"><label for="add-codes-male_adult">ولاد — بالغين (.txt)</label><input type="file" id="add-codes-male_adult" accept=".txt"></div>
+          <div class="studio-field"><label for="add-codes-male_elderly">ولاد — كبار سن (.txt)</label><input type="file" id="add-codes-male_elderly" accept=".txt"></div>
+          <div class="studio-field"><label for="add-codes-female_child">بنات — أطفال (.txt)</label><input type="file" id="add-codes-female_child" accept=".txt"></div>
+          <div class="studio-field"><label for="add-codes-female_adult">بنات — بالغين (.txt)</label><input type="file" id="add-codes-female_adult" accept=".txt"></div>
+          <div class="studio-field"><label for="add-codes-female_elderly">بنات — كبار سن (.txt)</label><input type="file" id="add-codes-female_elderly" accept=".txt"></div>
+        </div>
+      </div>
+      <label class="fb-check" style="margin-top:8px;"><input type="checkbox" id="add-codes-replace"> استبدال القايمة الحالية بالقايمة الجديدة (بدل الإضافة عليها) — لازم لو هتغيّر الشكل من قايمة واحدة لقوايم بالفئات أو العكس</label>
       <p class="studio-error" id="codes-error"></p>
       <p class="studio-success" id="codes-success"></p>
       <button type="button" class="studio-btn studio-btn-secondary" id="add-codes-btn">رفع الأكواد</button>
@@ -569,16 +596,30 @@
     $("shared-script-summary").innerHTML = `<span>عدد الجمل الحالي:</span> <span dir="ltr">${samples.length}</span>` + (task.script_file_name ? ` • <span dir="ltr">${escapeHtml(task.script_file_name)}</span>` : "");
     $("names-summary").innerHTML = `<span>عدد الأسامي في القايمة:</span> <span dir="ltr">${(task.fake_names || []).length}</span>`;
     if (isPerPerson()) {
-      $("scripts-summary").innerHTML = `<span>المتاح من السكريبتات:</span> <span dir="ltr">${task.scripts_left} / ${task.scripts_total}</span>`;
+      const sg = task.scripts_by_gender || { male: { total: 0, left: 0 }, female: { total: 0, left: 0 }, any: { total: scripts.length, left: task.scripts_left } };
+      $("scripts-summary").innerHTML = `<span>المتاح من السكريبتات:</span> <span dir="ltr">${task.scripts_left} / ${task.scripts_total}</span>` +
+        ` • <span>للولاد</span> <span dir="ltr">${sg.male.left} / ${sg.male.total}</span>` +
+        ` • <span>للبنات</span> <span dir="ltr">${sg.female.left} / ${sg.female.total}</span>` +
+        ` • <span>لأي حد</span> <span dir="ltr">${sg.any.left} / ${sg.any.total}</span>`;
+      const forWho = { male: ["للولاد", "status-pending"], female: ["للبنات", "status-pending"] };
       $("scripts-list").innerHTML = scripts.map((s) => `<div style="display:flex; align-items:center; gap:10px; padding:6px 4px; border-bottom:1px solid var(--studio-border);">
+          ${s.taken ? `<span style="width:16px;"></span>` : `<input type="checkbox" data-pick-script="${s.id}">`}
           <span dir="ltr" style="flex:1;">${escapeHtml(s.filename || "")}</span>
           <span dir="ltr">${s.sentence_count}</span><span>جملة</span>
+          ${s.gender ? `<span class="studio-pill ${forWho[s.gender][1]}">${forWho[s.gender][0]}</span>` : `<span class="studio-pill">لأي حد</span>`}
           ${s.taken ? `<span class="studio-pill status-rejected">محجوز</span>` : `<span class="studio-pill status-approved">متاح</span> <button type="button" class="studio-btn studio-btn-secondary" style="padding:4px 10px; font-size:0.75rem;" data-rm-script="${s.id}">مسح</button>`}</div>`).join("");
+      updatePicked();
     }
     if (isCodes()) {
-      $("codes-summary").innerHTML = `<span>أكواد الولاد المتاحة:</span> <span dir="ltr">${task.codes_left.male} / ${task.codes_total.male}</span> • <span>أكواد البنات المتاحة:</span> <span dir="ltr">${task.codes_left.female} / ${task.codes_total.female}</span>`;
+      const cb = task.codes_by_bracket || {}, BRK = { child: "أطفال", adult: "بالغين", elderly: "كبار سن" };
+      const line = (g) => `<span dir="ltr">${task.codes_left[g]} / ${task.codes_total[g]}</span>` +
+        (cb[g] ? ` (` + ["child", "adult", "elderly"].map((b) => `<span>${BRK[b]}</span> <span dir="ltr">${cb[g][b].left} / ${cb[g][b].total}</span>`).join(" • ") + `)` : "");
+      $("codes-summary").innerHTML = `<span>أكواد الولاد المتاحة:</span> ` + line("male") + ` • <span>أكواد البنات المتاحة:</span> ` + line("female");
+      $("codes-split-card").classList.toggle("hidden", !task.use_age_brackets);
     }
   }
+  function pickedScripts() { return Array.from($("scripts-list").querySelectorAll("input[data-pick-script]:checked")).map((c) => c.dataset.pickScript); }
+  function updatePicked() { $("scripts-picked").innerHTML = `<span dir="ltr">${pickedScripts().length}</span> <span>سكريبت متحدد</span>`; }
   async function reloadTask() {
     const d = await NMStudio.apiGetTask(taskId);
     task = d.task; scripts = d.scripts || []; samples = d.samples || [];
@@ -591,7 +632,7 @@
     if (!files.length) return showMsg("scripts-error", "اختار ملفات txt الأول.");
     await busy(this, "جاري الرفع...", async () => {
       try {
-        const r = await NMStudio.apiUploadScripts(taskId, files, "append");
+        const r = await NMStudio.apiUploadScripts(taskId, files, "append", $("add-scripts-for").value);
         $("add-scripts-files").value = "";
         await reloadTask();
         $("scripts-success").innerHTML = `<span>✓ اتضاف عدد السكريبتات:</span> <span dir="ltr">${r.added}</span>`;
@@ -599,18 +640,44 @@
       } catch (err) { showMsg("scripts-error", err.message); }
     });
   });
+  const CODE_KEYS = ["male", "female", "male_child", "male_adult", "male_elderly", "female_child", "female_adult", "female_elderly"];
   $("add-codes-btn").addEventListener("click", async function () {
     clearMsgs("codes-error", "codes-success");
-    const male = $("add-codes-male").files[0], female = $("add-codes-female").files[0];
-    if (!male && !female) return showMsg("codes-error", "اختار قايمة أكواد واحدة على الأقل.");
+    const lists = {};
+    CODE_KEYS.forEach((k) => { const f = $("add-codes-" + k).files[0]; if (f) lists[k] = f; });
+    if (!Object.keys(lists).length) return showMsg("codes-error", "اختار قايمة أكواد واحدة على الأقل.");
     await busy(this, "جاري الرفع...", async () => {
       try {
-        const r = await NMStudio.apiUploadCodes(taskId, { male, female }, "append");
-        $("add-codes-male").value = ""; $("add-codes-female").value = "";
+        const r = await NMStudio.apiUploadCodes(taskId, lists, $("add-codes-replace").checked ? "replace" : "append");
+        CODE_KEYS.forEach((k) => { $("add-codes-" + k).value = ""; });
+        $("add-codes-replace").checked = false;
         await reloadTask();
         $("codes-success").innerHTML = `<span>✓ اتحدّثت الأكواد.</span>` + (r.skipped ? ` <span>مكرر واتجاهل:</span> <span dir="ltr">${r.skipped}</span>` : "");
         $("codes-success").style.display = "block"; setTimeout(() => clearMsgs("codes-success"), 3500);
       } catch (err) { showMsg("codes-error", err.message); }
+    });
+  });
+
+  // scripts: tick some (or all the free ones) and decide who they are for
+  $("scripts-list").addEventListener("change", (e) => { if (e.target.matches && e.target.matches("input[data-pick-script]")) updatePicked(); });
+  $("scripts-pick-all").addEventListener("change", function () {
+    $("scripts-list").querySelectorAll("input[data-pick-script]").forEach((c) => { c.checked = this.checked; });
+    updatePicked();
+  });
+  $("scripts-assign-bar").addEventListener("click", async (e) => {
+    const b = e.target.closest && e.target.closest("button[data-assign]");
+    if (!b) return;
+    clearMsgs("scripts-error", "scripts-success");
+    const ids = pickedScripts();
+    if (!ids.length) return showMsg("scripts-error", "حدّد سكريبت واحد على الأقل الأول.");
+    await busy(b, "...", async () => {
+      try {
+        await NMStudio.apiAssignScripts(taskId, ids, b.dataset.assign);
+        $("scripts-pick-all").checked = false;
+        await reloadTask();
+        $("scripts-success").innerHTML = `<span>✓ اتغيّر نوع السكريبتات:</span> <span dir="ltr">${ids.length}</span>`;
+        $("scripts-success").style.display = "block"; setTimeout(() => clearMsgs("scripts-success"), 3500);
+      } catch (err) { showMsg("scripts-error", err.message); }
     });
   });
 
