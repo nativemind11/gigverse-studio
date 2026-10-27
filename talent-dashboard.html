@@ -53,7 +53,7 @@
   <!-- 1) available tasks: only what this talent can still start -->
   <section id="tab-available">
     <p class="studio-hint">المهام اللي تقدر تبدأها دلوقتي. المهمة اللي سلّمتها بتختفي من هنا وبتلاقيها في "مهامي".</p>
-    <div id="tasks-wrap" class="studio-grid cols-3" style="margin-top:12px;">
+    <div id="tasks-wrap" class="tc-grid" style="margin-top:12px;">
       <p class="studio-hint">جاري تحميل المهام...</p>
     </div>
   </section>
@@ -81,6 +81,7 @@
 </main>
 
 <script src="js/studio-talent.js"></script>
+<script src="js/studio-task-card.js"></script>
 <script>
   const talent = NMTalent.requireLogin();
   if (talent) document.getElementById("talent-name").textContent = talent.name;
@@ -110,17 +111,6 @@
   function setCount(id, n) { $(id).textContent = n ? `(${n})` : ""; }
 
   // ---------------------------------------------------------------- 1) available tasks
-  const GENDER_WORD = { male: "ولاد", female: "بنات" };
-  const BRACKET_WORD = { child: "أطفال", adult: "بالغين", elderly: "كبار السن" };
-  function slotsHtml(t) {
-    if (!t.limited) return "";
-    return `<div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:14px;">` + t.slots.map(s => {
-      const full = s.full || s.max === 0;
-      const who = `<span>${GENDER_WORD[s.gender]}</span>` + (s.ageBracket ? ` <span>${BRACKET_WORD[s.ageBracket]}</span>` : "");
-      return `<span class="studio-pill ${full ? "status-rejected" : "status-approved"}">${who} ${full ? `<span>تم الاكتفاء</span>` : `<span>متبقي</span> <span dir="ltr">${s.remaining} / ${s.max}</span>`}</span>`;
-    }).join("") + `</div>`;
-  }
-
   function renderAvailable(tasks) {
     const wrap = $("tasks-wrap");
     setCount("count-available", tasks.length);
@@ -128,19 +118,9 @@
       wrap.innerHTML = `<div class="studio-empty"><div class="icon">🎙️</div><p>مفيش مهام متاحة ليك دلوقتي. لما تنزل مهمة جديدة هتظهر هنا.</p></div>`;
       return;
     }
-    wrap.innerHTML = tasks.map(t => {
-      const allFull = t.limited && t.slots.every(s => s.full || s.max === 0);
-      const legacy = !t.limited && t.quantity ? ` • العدد المتاح: ${Math.max(t.quantity - t.submission_count, 0)}` : "";
-      return `
-      <div class="studio-card">
-        <h3 style="margin:4px 0 8px;">${escapeHtml(t.title)}</h3>
-        <p class="studio-hint" style="margin-bottom:12px;">${t.sample_count} جملة${legacy}</p>
-        ${slotsHtml(t)}
-        ${allFull
-          ? `<button class="studio-btn studio-btn-secondary studio-btn-block" disabled>تم الاكتفاء</button>`
-          : `<button class="studio-btn studio-btn-primary studio-btn-block" onclick="openPicker('${t.id}')">ابدأ التسجيل</button>`}
-      </div>`;
-    }).join("");
+    wrap.innerHTML = tasks.map(t => NMTaskCard.html(t, {
+      button: `<button class="studio-btn studio-btn-primary studio-btn-block" onclick="openPicker('${t.id}')"><span>ابدأ التسجيل</span></button>`,
+    })).join("");
   }
 
   async function openPicker(taskId) {

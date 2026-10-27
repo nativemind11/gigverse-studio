@@ -5,6 +5,9 @@
 //         "{2}" can be used to reorder (1-based).
 // To translate a NEW Arabic text: add one line here. Nothing else to change.
 window.STUDIO_I18N = { en: {
+  "الأماكن": "Places",
+  "العدد المتاح": "Available",
+  "مفتوحة للتسجيل": "Open for sign-up",
   "(بدون عنوان)": "(Untitled)",
   "(ضعيف)": "(Weak)",
   "(مقبول)": "(Acceptable)",
