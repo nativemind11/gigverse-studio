@@ -9,9 +9,11 @@
 //   StudioHours.set(selectEl, 36);                                      // show a stored value (even 100 → "more" + 100)
 //   StudioHours.get(selectEl);                                          // number | null (= inherit) | NaN (typed something invalid)
 //   StudioHours.valid(h);                                               // true for a whole number 1..720
+//   StudioHours.mount(selectEl, { value: 8, presets: StudioHours.IDLE_PRESETS });   // other quick choices, same "type any number" option
 window.StudioHours = (function () {
   "use strict";
   var PRESETS = [12, 24, 36, 48, 72];
+  var IDLE_PRESETS = [8, 10, 12, 16, 24];     // the "idle session" limit of a task (v6)
   var MAX = 720;
   var parts = new WeakMap();   // select -> { wrap, input }
 
@@ -21,7 +23,8 @@ window.StudioHours = (function () {
     opts = opts || {};
     var html = "";
     if (opts.inheritLabel) html += '<option value="">' + opts.inheritLabel + "</option>";
-    PRESETS.forEach(function (h) { html += '<option value="' + h + '">' + h + " ساعة</option>"; });
+    var presets = opts.presets || PRESETS;
+    presets.forEach(function (h) { html += '<option value="' + h + '">' + h + " ساعة</option>"; });
     html += '<option value="custom">أكتر من كده (اكتب العدد)</option>';
     select.innerHTML = html;
 
@@ -31,7 +34,7 @@ window.StudioHours = (function () {
       '<span class="studio-hint" style="margin:0;">ساعة (من 1 لـ ' + MAX + ")</span>";
     select.parentNode.insertBefore(wrap, select.nextSibling);
     var input = wrap.querySelector("input");
-    parts.set(select, { wrap: wrap, input: input });
+    parts.set(select, { wrap: wrap, input: input, presets: presets });
 
     function sync() { wrap.style.display = select.value === "custom" ? "flex" : "none"; }
     select.addEventListener("change", function () { sync(); if (select.value === "custom") input.focus(); });
@@ -43,8 +46,8 @@ window.StudioHours = (function () {
     if (!p) { select.value = String(hours); return; }
     var h = Number(hours);
     if (hours === null || hours === undefined || hours === "") {
-      select.value = select.querySelector('option[value=""]') ? "" : String(PRESETS[0]);
-    } else if (PRESETS.indexOf(h) >= 0) {
+      select.value = select.querySelector('option[value=""]') ? "" : String(p.presets[0]);
+    } else if (p.presets.indexOf(h) >= 0) {
       select.value = String(h);
     } else {
       select.value = "custom";
@@ -61,5 +64,5 @@ window.StudioHours = (function () {
     return Number(select.value);
   }
 
-  return { mount: mount, set: set, get: get, valid: valid, MAX: MAX, PRESETS: PRESETS };
+  return { mount: mount, set: set, get: get, valid: valid, MAX: MAX, PRESETS: PRESETS, IDLE_PRESETS: IDLE_PRESETS };
 })();

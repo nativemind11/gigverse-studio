@@ -90,6 +90,12 @@
       <p class="studio-hint hidden" id="per-leader-total-hint" style="margin:0;">العدد الإجمالي للمهمة = مجموع الأعداد اللي هتحددها لكل ليدر تحت (في خانة "حصة كل ليدر").</p>
     </div>
 
+    <div class="studio-field">
+      <label for="t-idle">مهلة الجلسة الساكتة</label>
+      <select id="t-idle"></select>
+      <p class="studio-hint" style="margin-top:6px;">بعد المدة دي من غير ما المتسجّل يرفع أي تسجيل، الجلسة بتتسحب والاسم والمكان بيرجعوا متاحين، والتسجيلات اللي رفعها بتتمسح.</p>
+    </div>
+
     <div class="studio-grid cols-2">
       <div class="studio-field">
         <label for="t-rework">مهلة إعادة التسجيل</label>
@@ -255,6 +261,7 @@
 <script>
   const user = NMStudio.requireStudioRole("head_leader");
   StudioHours.mount(document.getElementById("t-rework"), { value: 12 });   // 12 / 24 / 36 / 48 / 72 or any number of hours
+  StudioHours.mount(document.getElementById("t-idle"), { value: 8, presets: StudioHours.IDLE_PRESETS });   // 8 / 10 / 12 / 16 / 24 or any number of hours
   document.getElementById("logout-link").addEventListener("click", (e) => {
     e.preventDefault(); NMStudio.logout(); location.href = "login.html";
   });
@@ -459,6 +466,12 @@
       errorBox.style.display = "block";
       return;
     }
+    const idleHours = StudioHours.get(document.getElementById("t-idle"));
+    if (!StudioHours.valid(idleHours)) {
+      errorBox.textContent = `اكتب مهلة الجلسة الساكتة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`;
+      errorBox.style.display = "block";
+      return;
+    }
     const leaderQuotas = perLeaderOn() ? collectLeaderQuotas() : null;
     if (leaderQuotas) {
       if (!leaderIds.length) { errorBox.textContent = "علّم على ليدر واحد على الأقل عشان تحدد حصته."; errorBox.style.display = "block"; return; }
@@ -479,7 +492,7 @@
       createdTask = await NMStudio.apiCreateTask({
         title,
         instructions: document.getElementById("t-instructions").value,
-        reworkHours,
+        reworkHours, idleHours,
         useAgeBrackets, useReferenceAudio, scriptMode, identityMode, direct,
         quotas: collectQuotas(),
         ...(leaderQuotas ? { leaderQuotas } : {}),
@@ -623,6 +636,7 @@
       <p><strong>${isPerPerson() ? "عدد السكريبتات:" : "عدد الجمل:"}</strong> ${isPerPerson() ? scriptsUploaded : currentSamples.length}</p>
       <p><strong>الهوية:</strong> <span>${isCodes() ? "أكواد" : "أسامي مستعارة"}</span>${createdTask.direct ? ` • <span>نشر مباشر من غير ليدر</span>` : ""}</p>
       <p><strong>مهلة إعادة التسجيل:</strong> ${createdTask.rework_hours} ساعة</p>
+      <p><strong>مهلة الجلسة الساكتة:</strong> ${createdTask.idle_hours || 8} ساعة</p>
       <p><strong>تعليمات للمتسجّل:</strong> ${createdTask.instructions ? "فيه" : "مفيش"}</p>
       <p class="mb-0"><strong>الإعدادات:</strong> ${createdTask.recording_settings.sampleRate}Hz, ${createdTask.recording_settings.bitDepth}bit, ${createdTask.recording_settings.format.toUpperCase()}, ${createdTask.recording_settings.channels}</p>
       <div id="add-leader-box" class="${leaderCount || createdTask.direct ? "hidden" : ""}" style="margin-top:14px;">

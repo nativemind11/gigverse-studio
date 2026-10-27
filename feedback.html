@@ -377,21 +377,22 @@
     const lab = (p) => `${p.fakeName}${p.gender ? " — " + SYM[p.gender] : ""}${p.age != null ? " — " + p.age : ""}${ST[p.status] ? " — " + ST[p.status] : ""}`;
     const opt = (p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`;
     const byId = new Map(people.map((p) => [p.id, p]));
-    let none = 0, review = 0, sure = 0;
+    let none = 0, review = 0, sure = 0, pending = 0;
     const rows = names.map((e) => {
       const excluded = nameMap[e.label] === "none";
       const chosen = excluded ? "" : (nameMap[e.label] || e.sessionId || "");
-      const problem = !chosen ? "none" : (e.how === "extras" || e.conflict) ? "review" : "sure";
-      if (problem === "none") none++; else if (problem === "review") review++; else sure++;
+      const notDel = !chosen && !excluded && !!e.notDelivered;       // matches someone whose task never reached the company
+      const problem = notDel ? "pending" : !chosen ? "none" : (e.how === "extras" || e.conflict) ? "review" : "sure";
+      if (problem === "pending") pending++; else if (problem === "none") none++; else if (problem === "review") review++; else sure++;
       const can = (p) => !p.status || p.status === "approved" || p.status === "rejected" || p.id === chosen;   // only talents who can receive feedback are offered
       const near = (e.suggestions || []).map((id) => byId.get(id)).filter(Boolean).filter(can);
       const nearIds = new Set(near.map((p) => p.id));
       const sel = chosen && byId.get(chosen) && !nearIds.has(chosen) ? [byId.get(chosen)] : [];
       const first = [...sel, ...near];
-      const badge = excluded ? `<span class="fb-err">🚫 ألغيت المطابقة</span>` : !chosen ? `<span class="fb-err">❌ مش لاقي متسجّل</span>` : `<span class="${problem === "review" ? "fb-how weak" : "fb-ok"}">${HOW[e.how] || HOW.exact}</span>`;
+      const badge = excluded ? `<span class="fb-err">🚫 ألغيت المطابقة</span>` : notDel ? `<span class="fb-how weak">⏳ لسه ما اتسلّمش للشركة</span><span class="fb-how weak">${esc(e.notDelivered.fakeName)}</span>` : !chosen ? `<span class="fb-err">❌ مش لاقي متسجّل</span>` : `<span class="${problem === "review" ? "fb-how weak" : "fb-ok"}">${HOW[e.how] || HOW.exact}</span>`;
       const c = e.conflict ? `<span class="fb-how weak">⚠️ الملف بيقول: ${SYM[e.conflict.file.gender] || ""} ${esc(e.conflict.file.age || "")}</span><span class="fb-how weak">المتسجّل: ${SYM[e.person.gender] || ""} ${e.person.age == null ? "" : esc(e.person.age)}</span>` : "";
       return `<tr><td class="fb-email">${esc(e.label)}</td><td>${e.rows} صف</td>
-        <td><select data-label="${esc(e.label)}"><option value="">${excluded ? "↺ رجّع المطابقة التلقائية" : "— اختار المتسجّل —"}</option>${chosen ? `<option value="none">🚫 مش هو — إلغاء المطابقة</option>` : ""}${excluded ? `<option value="none">🚫 مش هو (ملغي)</option>` : ""}${first.length ? `<option disabled>الأقرب</option>${first.map(opt).join("")}` : ""}<option disabled>كل مشاركي المهمة</option>${people.filter(can).map(opt).join("")}</select></td>
+        <td><select data-label="${esc(e.label)}"><option value="">${excluded ? "↺ رجّع المطابقة التلقائية" : "— اختار المتسجّل —"}</option>${chosen ? `<option value="none">🚫 مش هو — إلغاء المطابقة</option>` : ""}${excluded ? `<option value="none">🚫 مش هو (ملغي)</option>` : ""}${first.length ? `<option disabled>الأقرب</option>${first.map(opt).join("")}` : ""}<option disabled>كل اللي تسليمهم وصل للشركة</option>${people.filter(can).map(opt).join("")}</select></td>
         <td>${badge}${c}</td></tr>`;
     });
     const isOpen = namesOpen === null ? none + review > 0 : namesOpen;
@@ -399,9 +400,10 @@
       <summary><b>🔎 مطابقة الأسماء</b>
         <span class="studio-pill status-approved">✅ ${sure} متأكد</span>
         ${review ? `<span class="studio-pill status-pending">⚠️ ${review} محتاج مراجعة</span>` : ""}
+        ${pending ? `<span class="studio-pill status-pending">⏳ ${pending} لسه ما اتسلّموش للشركة</span>` : ""}
         ${none ? `<span class="studio-pill status-rejected">❌ ${none} مش لاقيين</span>` : ""}</summary>
-      <p class="studio-hint" style="margin:8px 0;"><span>⏳ عند QA</span> · <span>🔍 QA بتراجع</span> · <span>✅ معتمد</span> · <span>↩️ مرفوض</span> — <span>الفيدباك بيتبعت بس للمعتمد والمرفوض.</span></p>
-      <p class="studio-hint" style="margin:8px 0;">راجع كل اسم. لو السيستم غلط، اختار المتسجّل الصح من القايمة (فيها اللي اشتغلوا في التاسك ده بس)، والاختيار بيتطبق على كل صفوف الاسم ده.</p>
+      <p class="studio-hint" style="margin:8px 0;"><span>الفيدباك بيتبعت بس للناس اللي تسليمهم اتراجع واتجمّع واتسلّم للشركة فعلًا. أي اسم تاني بيظهر "لسه ما اتسلّمش للشركة" ومش بيتبعتله حاجة.</span></p>
+      <p class="studio-hint" style="margin:8px 0;">راجع كل اسم. لو السيستم غلط، اختار المتسجّل الصح من القايمة (فيها اللي تسليمهم وصل للشركة في التاسك ده بس)، والاختيار بيتطبق على كل صفوف الاسم ده.</p>
       <table><thead><tr><th>الاسم في الملف</th><th>الصفوف</th><th>المتسجّل</th><th>المطابقة</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
     box.querySelector("details").addEventListener("toggle", (ev) => { namesOpen = ev.target.open; });
     box.querySelectorAll("select").forEach((sel) => {

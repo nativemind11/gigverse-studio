@@ -63,6 +63,11 @@
         <textarea id="e-instructions" rows="4" placeholder="مثال: اقعد في مكان هادي، وماتسجّلش من مايك خارجي."></textarea>
         <p class="studio-hint">بتظهر للمتسجّل قبل أول جملة، ولازم يدوس "فهمت" عشان يبدأ.</p>
       </div>
+      <div class="studio-field">
+        <label for="e-idle">مهلة الجلسة الساكتة</label>
+        <select id="e-idle"></select>
+        <p class="studio-hint" style="margin-top:6px;">بعد المدة دي من غير ما المتسجّل يرفع أي تسجيل، الجلسة بتتسحب والاسم والمكان بيرجعوا متاحين، والتسجيلات اللي رفعها بتتمسح. التغيير بيسري على الجلسات الشغالة كمان.</p>
+      </div>
       <div class="studio-grid cols-2">
         <div class="studio-field">
           <label for="e-rework">مهلة إعادة التسجيل</label>
@@ -283,6 +288,7 @@
   let task = null, samples = [], taskLeaders = [], allLeaders = [], scripts = [];
   let leaderQuotas = [], leaderSlots = {};          // v4: quota per leader (empty = the task only has its total)
   StudioHours.mount($("e-rework"));                  // 12 / 24 / 36 / 48 / 72 or any number of hours
+  StudioHours.mount($("e-idle"), { value: 8, presets: StudioHours.IDLE_PRESETS });   // 8 / 10 / 12 / 16 / 24 or any number of hours
 
   const GENDER_AR = { male: "ولاد", female: "بنات" };
   const BRACKET_ROWS = [["child", "أطفال"], ["adult", "بالغين"], ["elderly", "كبار السن"]];
@@ -318,6 +324,7 @@
     $("e-title").value = task.title || "";
     $("e-instructions").value = task.instructions || "";
     StudioHours.set($("e-rework"), task.rework_hours || 12);
+    StudioHours.set($("e-idle"), task.idle_hours || 8);
     $("e-ref-audio").checked = task.use_reference_audio !== false;
     $("q-brackets").checked = !!task.use_age_brackets;
     const rs = task.recording_settings || {};
@@ -333,11 +340,13 @@
     if (!title) return showMsg("basic-error", "اكتب اسم المهمة.");
     const reworkHours = StudioHours.get($("e-rework"));
     if (!StudioHours.valid(reworkHours)) return showMsg("basic-error", `اكتب مهلة الإعادة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`);
+    const idleHours = StudioHours.get($("e-idle"));
+    if (!StudioHours.valid(idleHours)) return showMsg("basic-error", `اكتب مهلة الجلسة الساكتة بالساعات (رقم صحيح من 1 لـ ${StudioHours.MAX}).`);
     await busy(this, "جاري الحفظ...", async () => {
       try {
         task = await NMStudio.apiUpdateTask(taskId, {
           title, instructions: $("e-instructions").value,
-          reworkHours, useReferenceAudio: $("e-ref-audio").checked,
+          reworkHours, idleHours, useReferenceAudio: $("e-ref-audio").checked,
           difficulty: $("e-difficulty").value, sampleRate: Number($("e-sample-rate").value), bitDepth: Number($("e-bit-depth").value),
           format: $("e-format").value, channels: $("e-channels").value,
         });

@@ -156,8 +156,8 @@
 
   <div id="expired-box" class="hidden studio-card text-center" style="border-color:var(--studio-danger);">
     <div style="font-size:2.6rem;">⛔</div>
-    <h2 class="studio-title">انتهت مهلة الإعادة</h2>
-    <p class="studio-subtitle">مهلة الإعادة خلصت من غير ما التسجيلات المطلوبة تتسلّم، فالاسم اتسحب منك واتاح لحد تاني. تقدر تبدأ تسجيل جديد من قايمة المهام.</p>
+    <h2 class="studio-title" id="expired-title">انتهت مهلة الإعادة</h2>
+    <p class="studio-subtitle" id="expired-text">مهلة الإعادة خلصت من غير ما التسجيلات المطلوبة تتسلّم، فالاسم اتسحب منك واتاح لحد تاني. تقدر تبدأ تسجيل جديد من قايمة المهام.</p>
     <a href="tasks.html" class="studio-btn studio-btn-primary">قايمة المهام</a>
   </div>
 
@@ -246,6 +246,13 @@
       $("loading-box").classList.add("hidden");
 
       if (session.status === "expired") {
+        // withdrawn for sitting idle (it never reached a rework deadline): say so
+        if (!session.rework_deadline) {
+          $("expired-title").textContent = "الجلسة اتسحبت";
+          $("expired-text").textContent = session.idle_hours
+            ? `الجلسة فضلت من غير تسجيل أكتر من ${session.idle_hours} ساعة، فالاسم اتسحب منك واتاح لحد تاني. تقدر تبدأ تسجيل جديد من قايمة المهام.`
+            : "الجلسة فضلت من غير تسجيل أكتر من المدة المحددة للمهمة، فالاسم اتسحب منك واتاح لحد تاني. تقدر تبدأ تسجيل جديد من قايمة المهام.";
+        }
         $("expired-box").classList.remove("hidden");
         return;
       }
