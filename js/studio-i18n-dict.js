@@ -8,6 +8,8 @@ window.STUDIO_I18N = { en: {
   "الأماكن": "Places",
   "العدد المتاح": "Available",
   "مفتوحة للتسجيل": "Open for sign-up",
+  "مفتوحة": "Open",
+  "آخر أماكن": "Last places",
   "(بدون عنوان)": "(Untitled)",
   "(ضعيف)": "(Weak)",
   "(مقبول)": "(Acceptable)",

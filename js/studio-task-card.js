@@ -1,56 +1,70 @@
 // Studio — the "available task" card, shared by tasks.html (public) and the talent's account (talent-dashboard.html).
 //   NMTaskCard.html(task, { button })  ->  card markup.  task = one entry of GET /api/studio/talent/tasks
-// Boys / girls in two columns; inside each, one row per age bracket (or one row when the task has no brackets), with a
-// bar showing how much of the place is still free. Every visible Arabic text is its own element so studio-i18n.js can translate it.
+// Layout: title + status badge, a line with the sentence count and the places left, one overall bar, then a small
+// table — columns = boys / girls, rows = age groups (one row when the task has no age groups) — each cell shows the
+// places left with its own bar. Every visible Arabic text is its own element so studio-i18n.js can translate it.
 (function () {
   var GENDERS = [["male", "♂", "ولاد"], ["female", "♀", "بنات"]];
-  var BRACKET = { child: "أطفال", adult: "بالغين", elderly: "كبار السن" };
+  var BRACKETS = [["adult", "بالغين"], ["child", "أطفال"], ["elderly", "كبار السن"]];
 
   function esc(s) { var d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; }
   function pct(remaining, max) { return max > 0 ? Math.max(0, Math.min(100, Math.round((remaining / max) * 100))) : 0; }
   function level(p) { return p <= 15 ? "low" : p <= 50 ? "mid" : "high"; }
+  // "left / max" as ONE left-to-right unit, so the slash never flips inside the Arabic line
+  function num(left, max) { return '<span class="tc-frac" dir="ltr"><b>' + left + "</b><small>/" + max + "</small></span>"; }
 
-  function slotRow(s) {
-    var full = s.full || s.max === 0;
+  function cell(s) {
+    if (!s || (s.max === 0 && !s.used)) return '<div class="tc-cell na"><span class="tc-dash">—</span></div>';
+    if (s.full || s.max === 0) return '<div class="tc-cell full"><span class="tc-full">تم الاكتفاء</span></div>';
     var p = pct(s.remaining, s.max);
-    var name = s.ageBracket ? '<span class="tc-row-name">' + BRACKET[s.ageBracket] + "</span>" : '<span class="tc-row-name">الأماكن</span>';
-    return '<div class="tc-row' + (full ? " is-full" : "") + '">' + name +
-      '<span class="tc-bar ' + (full ? "full" : level(p)) + '"><i style="width:' + (full ? 0 : p) + '%"></i></span>' +
-      (full ? '<span class="tc-full">تم الاكتفاء</span>'
-            : '<span class="tc-num" dir="ltr"><b>' + s.remaining + '</b> / ' + s.max + "</span>") +
-      "</div>";
+    return '<div class="tc-cell ' + level(p) + '"><span class="tc-val">' + num(s.remaining, s.max) + "</span>" +
+      '<span class="tc-bar"><i style="width:' + p + '%"></i></span></div>';
   }
 
-  function gendersHtml(t) {
-    return GENDERS.map(function (g) {
-      var rows = t.slots.filter(function (s) { return s.gender === g[0] && !(s.max === 0 && !s.used); });
-      if (!rows.length) return "";
-      return '<section class="tc-g ' + g[0] + '"><h4><span class="tc-gico">' + g[1] + "</span> <span>" + g[2] + "</span></h4>" +
-        rows.map(slotRow).join("") + "</section>";
-    }).join("");
+  function tableHtml(t) {
+    var slots = t.slots || [];
+    var genders = GENDERS.filter(function (g) { return slots.some(function (s) { return s.gender === g[0] && !(s.max === 0 && !s.used); }); });
+    if (!genders.length) return "";
+    var byBracket = slots.some(function (s) { return !!s.ageBracket; });
+    var rows = byBracket ? BRACKETS.filter(function (b) { return slots.some(function (s) { return s.ageBracket === b[0]; }); }) : [["", ""]];
+    var find = function (g, b) { return slots.filter(function (s) { return s.gender === g && (s.ageBracket || "") === b; })[0]; };
+    var cols = (byBracket ? "auto " : "") + "repeat(" + genders.length + ", minmax(0, 1fr))";
+    var out = '<div class="tc-table' + (byBracket ? " has-rows" : "") + '" style="grid-template-columns:' + cols + '">';
+    if (byBracket) out += '<div class="tc-corner"></div>';
+    genders.forEach(function (g) { out += '<div class="tc-colh ' + g[0] + '"><span class="tc-gico">' + g[1] + "</span><span>" + g[2] + "</span></div>"; });
+    rows.forEach(function (b) {
+      if (byBracket) out += '<div class="tc-rowh"><span>' + b[1] + "</span></div>";
+      genders.forEach(function (g) { out += cell(find(g[0], b[0])); });
+    });
+    return out + "</div>";
   }
 
   function html(t, opts) {
     opts = opts || {};
     var limited = !!t.limited;
-    var open = limited ? t.slots.filter(function (s) { return !s.full && s.max > 0; }) : [];
+    var slots = t.slots || [];
+    var open = limited ? slots.filter(function (s) { return !s.full && s.max > 0; }) : [];
     var allFull = limited && !open.length;
-    var totalMax = limited ? t.slots.reduce(function (n, s) { return n + s.max; }, 0) : 0;
-    var totalLeft = limited ? t.slots.reduce(function (n, s) { return n + s.remaining; }, 0) : 0;
-    var chips = '<span class="tc-chip">🎙️ <b dir="ltr">' + (t.sample_count || 0) + "</b> <span>جملة</span></span>";
-    if (!limited) {
-      chips += t.quantity
-        ? '<span class="tc-chip"><span>العدد المتاح</span> <b dir="ltr">' + Math.max(t.quantity - (t.submission_count || 0), 0) + "</b></span>"
-        : '<span class="tc-chip ok"><span>مفتوحة للتسجيل</span></span>';
-    } else if (allFull) chips += '<span class="tc-chip bad"><span>تم الاكتفاء</span></span>';
-    else chips += '<span class="tc-chip ok"><span>متبقي</span> <b dir="ltr">' + totalLeft + " / " + totalMax + "</b></span>";
+    var totalMax = limited ? slots.reduce(function (n, s) { return n + s.max; }, 0) : 0;
+    var totalLeft = limited ? slots.reduce(function (n, s) { return n + s.remaining; }, 0) : 0;
     var p = pct(totalLeft, totalMax);
-    var overall = limited && !allFull ? '<div class="tc-total"><span class="tc-bar ' + level(p) + '"><i style="width:' + p + '%"></i></span></div>' : "";
+
+    var badge;
+    if (allFull) badge = '<span class="tc-badge bad"><span>تم الاكتفاء</span></span>';
+    else if (limited && p <= 15) badge = '<span class="tc-badge low"><span>آخر أماكن</span></span>';
+    else if (!limited && !t.quantity) badge = '<span class="tc-badge ok"><span>مفتوحة للتسجيل</span></span>';
+    else badge = '<span class="tc-badge ok"><span>مفتوحة</span></span>';
+
+    var meta = '<span class="tc-meta-item">🎙️ <b dir="ltr">' + (t.sample_count || 0) + "</b> <span>جملة</span></span>";
+    if (limited && !allFull) meta += '<span class="tc-meta-item"><span>متبقي</span> ' + num(totalLeft, totalMax) + "</span>";
+    else if (!limited && t.quantity) meta += '<span class="tc-meta-item"><span>العدد المتاح</span> <b dir="ltr">' + Math.max(t.quantity - (t.submission_count || 0), 0) + "</b></span>";
+
+    var overall = limited && !allFull ? '<span class="tc-bar tc-total ' + level(p) + '"><i style="width:' + p + '%"></i></span>' : "";
     var button = opts.button !== undefined ? opts.button : "";
     return '<article class="tc' + (allFull ? " is-full" : "") + '">' +
-      '<header class="tc-head"><h3>' + esc(t.title) + '</h3></header>' +
-      '<div class="tc-chips">' + chips + "</div>" + overall +
-      (limited ? '<div class="tc-genders">' + gendersHtml(t) + "</div>" : "") +
+      '<header class="tc-head"><h3>' + esc(t.title) + "</h3>" + badge + "</header>" +
+      '<div class="tc-meta">' + meta + "</div>" + overall +
+      (limited ? tableHtml(t) : "") +
       '<div class="tc-foot">' + (allFull
         ? '<button type="button" class="studio-btn studio-btn-secondary studio-btn-block" disabled><span>تم الاكتفاء</span></button>'
         : button) + "</div></article>";
