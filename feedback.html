@@ -59,6 +59,19 @@
   .fb-toast { position: fixed; bottom: 20px; inset-inline: 20px; max-width: 560px; margin-inline: auto; z-index: 50; background: var(--studio-surface); border: 1px solid var(--studio-accent); border-radius: 12px; padding: 14px 16px; font-size: 0.9rem; line-height: 1.7; }
   .fb-toast.bad { border-color: var(--studio-danger); color: var(--studio-danger); }
   .fb-late { color: var(--studio-danger); font-weight: 700; }
+
+  .fb-side { display: flex; gap: 8px 14px; flex-wrap: wrap; align-items: flex-start; }
+  .fb-rec { display: inline-block; vertical-align: top; }
+  .fb-file { margin-bottom: 18px; }
+  .fb-fhead { display: flex; gap: 10px 14px; flex-wrap: wrap; align-items: center; justify-content: space-between; margin-bottom: 10px; }
+  .fb-fhead h4 { margin: 0; }
+  .fb-mini-tabs { display: flex; gap: 6px; margin: 16px 0 10px; border-top: 1px solid var(--studio-border); padding-top: 14px; }
+  .fb-mini-tab { padding: 7px 14px; border-radius: 8px; font-size: 0.82rem; font-weight: 700; color: var(--studio-text-muted); cursor: pointer; background: var(--studio-surface-2); }
+  .fb-mini-tab.active { background: var(--studio-accent); color: #04211D; }
+  .fb-btnrow { display: flex; gap: 10px; flex-wrap: wrap; margin: 10px 0; }
+  .fb-batch { border: 1px solid var(--studio-border); border-radius: 10px; padding: 10px 14px; margin: 10px 0; }
+  .fb-batch summary { cursor: pointer; display: flex; gap: 10px 14px; flex-wrap: wrap; align-items: center; }
+  .fb-filter { max-width: 300px; margin: 0 0 16px; }
 </style>
 </head>
 <body class="studio" data-i18n-reload>
@@ -74,6 +87,30 @@
 <main class="studio-shell wide">
   <div class="studio-eyebrow">لوحة الهيد ليدر</div>
   <h1 class="studio-title">فيدباك الشركة</h1>
+  <p class="studio-subtitle">تابع الفيدباك اللي بعتّه للمتسجّلين ملف ملف، وجمّع الريورك اللي خلص وسلّمه للشركة. لرفع ملف فيدباك جديد استخدم تبويب "رفع ملف فيدباك جديد".</p>
+
+  <div class="studio-tabs" id="main-tabs">
+    <div class="studio-tab active" data-tab="board">الفيدباك الجاري <span id="cnt-board"></span></div>
+    <div class="studio-tab" data-tab="delivered">الريورك المتسلّم</div>
+    <div class="studio-tab" data-tab="new">➕ رفع ملف فيدباك جديد</div>
+  </div>
+
+  <div class="studio-field fb-filter" id="filter-box">
+    <select id="filter-task"><option value="">كل المهام</option></select>
+  </div>
+
+  <!-- 1) live feedback: task -> feedback file -> one row per person -->
+  <section id="tab-board">
+    <div id="board-wrap"><div class="studio-empty"><p>جاري التحميل...</p></div></div>
+  </section>
+
+  <!-- 2) rework already collected and delivered to the company -->
+  <section id="tab-delivered" class="hidden">
+    <div id="delivered-wrap"><div class="studio-empty"><p>جاري التحميل...</p></div></div>
+  </section>
+
+  <!-- 3) upload a new company feedback file -->
+  <section id="tab-new" class="hidden">
   <p class="studio-subtitle">ارفع ملف الإكسيل اللي الشركة بعتته، وحدّد أنهي عمود فيه الاسم وأرقام التسجيلات ووصف المشكلة. النظام هيلاقي كل متسجّل وليدره، ويبعتلهم التسجيلات اللي فيها مشكلة <b>بس</b> للإعادة، وبيبدأ عداد المهلة (<b>بالساعات اللي تحددها</b>). <b>لو المتسجّل مسلّمش في المهلة، الاسم بيتسحب منه ويتاح لمتسجّل تاني على نفس المهمة.</b></p>
 
   <div class="studio-card fb-step" id="step-upload">
@@ -173,13 +210,7 @@
     <p class="studio-error" id="apply-error"></p>
   </div>
 
-  <div class="studio-card">
-    <div style="display:flex; align-items:center; justify-content:space-between; gap:12px; flex-wrap:wrap; margin-bottom:10px;">
-      <h3 style="margin:0;">متابعة الفيدباك</h3>
-      <select id="filter-task" style="max-width:260px;"><option value="">كل المهام</option></select>
-    </div>
-    <div id="items-wrap"><div class="studio-empty"><p>جاري التحميل...</p></div></div>
-  </div>
+  </section>
 </main>
 
 <div id="toast" class="fb-toast hidden"></div>
@@ -429,17 +460,35 @@
       ${summary.final ? `<span class="studio-pill status-rejected">🚫 ${summary.final} رفض نهائي (من غير إعادة)</span>` : ""}
       ${summary.ignored ? `<span class="studio-pill status-pending">🙈 ${summary.ignored} صف اتجاهل (${ign})</span>` : ""}
       <span class="studio-hint">المهمة "${esc(task.title)}" فيها ${sampleCount} تسجيل لكل متسجّل</span>`;
+    // v7: ONE row per person — all of his recordings (with the sentence) side by side, nothing repeated
+    const people = new Map();
+    for (const r of results.filter((x) => x.ok)) {
+      const key = r.session ? r.session.id : "row-" + r.row;
+      if (!people.has(key)) people.set(key, { session: r.session, labels: [], rows: [], recs: [], problems: [] });
+      const p = people.get(key);
+      if (!p.labels.includes(r.label)) p.labels.push(r.label);
+      p.rows.push(r.row);
+      const nums = (r.numbers || []).slice().sort((x, y) => x - y);
+      const note = matchNote(r);
+      // each recording number appears ONCE per person (the same recording flagged on two rows is not repeated)
+      for (const n of nums) if (!p.recs.some((x) => x.n === n)) p.recs.push({ n, note: nums.length === 1 ? note : "" });
+      if (!nums.length && !p.recs.some((x) => x.n === null && x.note === note)) p.recs.push({ n: null, note });
+      const text = (r.description || "").trim();
+      if (text) {
+        const hit = p.problems.find((x) => x.text === text);
+        if (hit) hit.nums = [...new Set([...hit.nums, ...nums])].sort((x, y) => x - y); else p.problems.push({ text, nums });
+      }
+    }
+    const chips = (nums) => nums.map((n) => `<span class="fb-chip">${n}</span>`).join("");
     $("result-table").innerHTML = `
-      <thead><tr><th>صف</th><th>الاسم في الملف</th><th>المتسجّل</th><th>الليدر</th><th>التسجيلات</th><th>المشكلة</th><th>النتيجة</th></tr></thead>
-      <tbody>${results.filter((r) => r.ok).map((r) => `
+      <thead><tr><th>الاسم في الملف</th><th>المتسجّل</th><th>الليدر</th><th>التسجيلات</th><th>المشكلة</th></tr></thead>
+      <tbody>${[...people.values()].map((p) => `
         <tr>
-          <td>${esc(r.row)}</td>
-          <td class="fb-email">${esc(r.label)}</td>
-          <td>${r.session ? `<span class="studio-code">${esc(r.session.fakeName)}</span><br>${esc(r.session.realName || "")}<br><span class="fb-email">${esc(r.session.email || "")}</span>` : "—"}</td>
-          <td>${r.session ? esc(r.session.leaderCode) : "—"}</td>
-          <td>${(r.numbers || []).map((n) => `<span class="fb-chip">${n}</span>`).join("") || "—"}${matchNote(r)}</td>
-          <td>${esc(r.description || "—")}</td>
-          <td>${r.ok ? `<span class="fb-ok">✓ جاهز</span>` : `<span class="fb-err">${esc(r.message)}</span>`}</td>
+          <td class="fb-email">${p.labels.map(esc).join("<br>")}<br><span class="studio-hint"><span>صف</span> ${p.rows.join(LOCALE === "en-GB" ? ", " : "، ")}</span></td>
+          <td>${p.session ? `<span class="studio-code">${esc(p.session.fakeName)}</span><br>${esc(p.session.realName || "")}<br><span class="fb-email">${esc(p.session.email || "")}</span>` : "—"}</td>
+          <td>${p.session ? esc(p.session.leaderCode) : "—"}</td>
+          <td><div class="fb-side">${p.recs.sort((x, y) => (x.n ?? 1e9) - (y.n ?? 1e9)).map((x) => `<span class="fb-rec">${x.n === null ? "—" : chips([x.n])}${x.note}</span>`).join("")}</div></td>
+          <td>${p.problems.length ? p.problems.map((x) => `<div>${chips(x.nums)} ${esc(x.text)}</div>`).join("") : "—"}</td>
         </tr>`).join("")}</tbody>`;
     // rows with a problem are not listed one by one: just why, how many, and which rows
     const bad = new Map();
@@ -495,54 +544,180 @@
       $("step-preview").classList.add("hidden");
       $("step-map").classList.add("hidden");
       $("file-input").value = ""; file = null; lastPreview = null;
-      await loadItems();
+      showMainTab("board");
     } catch (err) {
       showErr("apply-error", err.message);
     } finally { btn.textContent = "✅ تطبيق الفيدباك"; updateApply(); }
   });
 
-  // ------------------------------------------------------- tracking list
-  const STATUS = {
-    pending: ["status-pending", "⏳ مستني المتسجّل"],
-    acknowledged: ["status-pending", "👀 المتسجّل فتح الإعادة"],
-    reworked: ["status-approved", "✅ اتعادت"],
-    expired: ["status-rejected", "⛔ اتسحب الاسم"],
-  };
+  // ======================================================= v7: tabs, live list, delivered rework
+  const LOCALE = localStorage.getItem("studio_lang") === "en" ? "en-GB" : "ar-EG";
+  const fmt = (iso, short) => iso ? new Date(iso).toLocaleString(LOCALE, { timeZone: TZ, dateStyle: short ? "short" : "medium", timeStyle: "short" }) : "";
+  const MAIN = ["board", "delivered", "new"];
+  function showMainTab(name) {
+    if (!MAIN.includes(name)) name = "board";
+    MAIN.forEach((t) => $("tab-" + t).classList.toggle("hidden", t !== name));
+    document.querySelectorAll("#main-tabs .studio-tab").forEach((el) => el.classList.toggle("active", el.dataset.tab === name));
+    $("filter-box").classList.toggle("hidden", name === "new");
+    if (name === "board") loadBoard(); else if (name === "delivered") loadDelivered();
+    history.replaceState(null, "", "#" + name);
+  }
+  document.querySelectorAll("#main-tabs .studio-tab").forEach((el) => el.addEventListener("click", () => showMainTab(el.dataset.tab)));
+  $("filter-task").addEventListener("change", () => { if (!$("tab-board").classList.contains("hidden")) loadBoard(); else if (!$("tab-delivered").classList.contains("hidden")) loadDelivered(); });
 
-  async function loadItems() {
+  const STATE = {
+    redoing: ["status-pending", "⏳ بيعيد التسجيل"],
+    qa_returned: ["status-rejected", "↩️ QA رجّعه تاني"],
+    at_qa: ["status-pending", "📥 سلّم وعند QA"],
+    ready: ["status-approved", "✅ عمل الريورك"],
+    collecting: ["status-pending", "⏳ بيتجمّع"],
+    expired: ["status-rejected", "⛔ اتسحب الاسم"],
+    final: ["status-rejected", "🚫 رفض نهائي"],
+  };
+  const chip = (n) => `<span class="fb-chip">${n}</span>`;
+  const paneOf = new Map();          // feedback file id -> "zip" | "sheet" (what each file card shows under its people)
+  let boardData = null;
+
+  async function loadBoard() {
     try {
-      const { items } = await NMStudio.apiFeedbackItems($("filter-task").value || null);
-      if (!items.length) {
-        $("items-wrap").innerHTML = `<div class="studio-empty"><div class="icon">📝</div><p>لسه مفيش فيدباك مسجّل.</p></div>`;
+      boardData = await NMStudio.apiFeedbackBoard($("filter-task").value || null);
+      renderBoard();
+    } catch (err) { $("board-wrap").innerHTML = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`; }
+  }
+
+  function personRow(p) {
+    const st = STATE[p.state] || ["", p.state];
+    const left = p.state === "redoing" ? NMStudio.timeLeft(p.deadline) : null;
+    const probs = p.problems.filter((x) => x.text);
+    const delivered = p.reworkedAt && ["at_qa", "ready", "qa_returned", "collecting"].includes(p.state);
+    return `<tr>
+      <td><span class="fb-email">${esc(p.label)}</span><br><span class="studio-code">${esc(p.fakeName)}</span> <span class="studio-hint">${SYM[p.gender] || ""}</span></td>
+      <td>${esc(p.leaderCode)}</td>
+      <td>${p.numbers.map(chip).join("")}${probs.length ? `<div class="studio-hint">${probs.map((x) => `${x.numbers.join(", ")}: ${esc(x.text)}`).join(" | ")}</div>` : ""}</td>
+      <td><span class="studio-pill ${st[0]}">${st[1]}</span></td>
+      <td class="${left && left.overdue ? "fb-late" : ""}">${left ? esc(left.text) : p.state === "expired" ? "<span>الاسم اتسحب</span>" : p.state === "final" ? "—" : "—"}${delivered ? `<br><span class="studio-hint"><span>سلّم الريورك:</span> ${esc(fmt(p.reworkedAt, true))}</span>` : ""}</td>
+    </tr>`;
+  }
+
+  function fileCard(f) {
+    const c = f.counts;
+    const pane = paneOf.get(f.fileId) || "zip";
+    const ready = f.people.filter((p) => p.state === "ready");
+    const pills = [
+      c.redoing ? `<span class="studio-pill status-pending">⏳ ${c.redoing} بيعيدوا التسجيل</span>` : "",
+      c.qa_returned ? `<span class="studio-pill status-rejected">↩️ ${c.qa_returned} QA رجّعهم</span>` : "",
+      c.at_qa ? `<span class="studio-pill status-pending">📥 ${c.at_qa} عند QA</span>` : "",
+      c.ready ? `<span class="studio-pill status-approved">✅ ${c.ready} جاهزين للتجميع</span>` : "",
+      c.expired ? `<span class="studio-pill status-rejected">⛔ ${c.expired} اتسحب اسمهم</span>` : "",
+      c.final ? `<span class="studio-pill status-rejected">🚫 ${c.final} رفض نهائي</span>` : "",
+      c.collected ? `<span class="studio-pill status-pending">📦 ${c.collected} اتجمّعوا</span>` : "",
+    ].join(" ");
+    const zipPane = `
+      <p class="studio-hint">هنا بس اللي <b>سلّم الريورك</b> و QA وافقت عليه. الولاد والبنات في ZIP منفصل، واللي بيتجمّع بيختفي من هنا ويظهر في "الريورك المتسلّم" بتاريخه.</p>
+      <div class="fb-btnrow">
+        <button class="studio-btn studio-btn-primary" data-collect data-file="${esc(f.fileId)}" data-gender="male" ${f.ready.male ? "" : "disabled"}>👦 تجميع الولاد (${f.ready.male})</button>
+        <button class="studio-btn studio-btn-primary" data-collect data-file="${esc(f.fileId)}" data-gender="female" ${f.ready.female ? "" : "disabled"}>👧 تجميع البنات (${f.ready.female})</button>
+      </div>`;
+    const sheetPane = `
+      <p class="studio-hint">إكسيل بأسماء اللي سلّموا الريورك زي ما هي مكتوبة في ملف الشركة، مع تاريخ التسليم واسم الـ QA اللي راجع.</p>
+      ${ready.length ? `<div class="studio-table-wrap"><table class="studio-table">
+        <thead><tr><th>الاسم في الملف</th><th>الاسم المستعار</th><th>النوع</th><th>الجمل المعادة</th><th>سلّم الريورك</th><th>QA</th></tr></thead>
+        <tbody>${ready.map((p) => `<tr><td class="fb-email">${esc(p.label)}</td><td><span class="studio-code">${esc(p.fakeName)}</span></td><td>${SYM[p.gender] || ""}</td><td>${p.numbers.map(chip).join("")}</td><td>${esc(fmt(p.reworkedAt, true))}</td><td>${esc(p.qaName || "—")}</td></tr>`).join("")}</tbody>
+      </table></div>` : `<p class="studio-hint">مفيش حد جاهز دلوقتي.</p>`}
+      <div class="fb-btnrow"><button class="studio-btn studio-btn-secondary" data-sheet data-file="${esc(f.fileId)}" ${ready.length ? "" : "disabled"}>⬇️ تنزيل الشيت (Excel)</button></div>`;
+    return `
+    <div class="studio-card fb-file">
+      <div class="fb-fhead">
+        <h4>📄 ${f.fileName ? esc(f.fileName) : "<span>ملف قديم</span>"} <span class="studio-hint">· <span>اترفع</span> ${esc(fmt(f.createdAt))}</span></h4>
+        <div>${pills}</div>
+      </div>
+      <div class="studio-table-wrap"><table class="studio-table">
+        <thead><tr><th>الاسم في الملف</th><th>الليدر</th><th>التسجيلات</th><th>الحالة</th><th>المدة الباقية</th></tr></thead>
+        <tbody>${f.people.map(personRow).join("")}</tbody>
+      </table></div>
+      <div class="fb-mini-tabs">
+        <div class="fb-mini-tab ${pane === "zip" ? "active" : ""}" data-pane-tab data-file="${esc(f.fileId)}" data-pane="zip">📦 ZIP</div>
+        <div class="fb-mini-tab ${pane === "sheet" ? "active" : ""}" data-pane-tab data-file="${esc(f.fileId)}" data-pane="sheet">📊 شيت</div>
+      </div>
+      ${pane === "zip" ? zipPane : sheetPane}
+    </div>`;
+  }
+
+  function renderBoard() {
+    const tasks = boardData.tasks;
+    let live = 0;
+    tasks.forEach((t) => t.files.forEach((f) => { live += f.counts.redoing + f.counts.qa_returned + f.counts.at_qa + f.counts.ready; }));
+    $("cnt-board").textContent = live ? `(${live})` : "";
+    if (!tasks.length) {
+      $("board-wrap").innerHTML = `<div class="studio-empty"><div class="icon">📝</div><p>مفيش فيدباك جاري دلوقتي. ارفع ملف فيدباك جديد من التبويب اللي فوق.</p></div>`;
+      return;
+    }
+    $("board-wrap").innerHTML = tasks.map((t) => `<h3 style="margin:20px 0 10px;">${esc(t.title)}</h3>${t.files.map(fileCard).join("")}`).join("");
+  }
+
+  $("board-wrap").addEventListener("click", async (ev) => {
+    const tab = ev.target.closest("[data-pane-tab]");
+    if (tab) { paneOf.set(tab.dataset.file, tab.dataset.pane); return renderBoard(); }
+    const sheetBtn = ev.target.closest("[data-sheet]");
+    if (sheetBtn) {
+      sheetBtn.disabled = true;
+      try { await NMStudio.downloadFeedbackSheet(sheetBtn.dataset.file, "Rework sheet.xlsx"); }
+      catch (err) { toast(esc(err.message), true); }
+      finally { sheetBtn.disabled = false; }
+      return;
+    }
+    const col = ev.target.closest("[data-collect]");
+    if (col) {
+      const boys = col.dataset.gender === "male";
+      if (!confirm(`هتجمّع ريورك ${boys ? "الولاد" : "البنات"} اللي سلّموا وQA وافقت، في ZIP واحد، ويختفوا من هنا ويتنقلوا لـ "الريورك المتسلّم". تكمل؟`)) return;
+      const old = col.textContent;
+      col.disabled = true; col.textContent = "جاري التجميع...";
+      try {
+        const r = await NMStudio.apiFeedbackCollect(col.dataset.file, col.dataset.gender);
+        toast(`✅ اتجمّع ريورك <b>${r.batch.session_count}</b> ${boys ? "ولد" : "بنت"} في ZIP واحد، وبقى في "الريورك المتسلّم".`);
+        await loadBoard();
+      } catch (err) { toast(esc(err.message), true); col.disabled = false; col.textContent = old; }
+    }
+  });
+
+  // ------------------------------------------------ delivered rework
+  async function loadDelivered() {
+    try {
+      const { tasks } = await NMStudio.apiFeedbackDelivered($("filter-task").value || null);
+      if (!tasks.length) {
+        $("delivered-wrap").innerHTML = `<div class="studio-empty"><div class="icon">📦</div><p>لسه مفيش ريورك اتسلّم للشركة من هنا.</p></div>`;
         return;
       }
-      const byTask = new Map();
-      items.forEach((i) => { if (!byTask.has(i.task_id)) byTask.set(i.task_id, []); byTask.get(i.task_id).push(i); });
-      $("items-wrap").innerHTML = [...byTask.values()].map((list) => `
-        <h4 style="margin:16px 0 8px;">${esc(list[0].task_title)}</h4>
-        <div class="studio-table-wrap"><table class="studio-table">
-          <thead><tr><th>المتسجّل</th><th>الليدر</th><th>التسجيلات</th><th>المشكلة</th><th>اتسجّل في</th><th>الحالة</th><th>المهلة</th></tr></thead>
-          <tbody>${list.map((i) => {
-            const st = i.is_final ? ["status-rejected", "🚫 رفض نهائي"] : i.overdue ? ["status-rejected", "⏰ متأخر"] : (STATUS[i.status] || ["", i.status]);
-            const left = (i.status === "reworked" || i.status === "expired") ? "" : NMStudio.timeLeft(i.rework_deadline);
-            return `<tr>
-              <td><span class="studio-code">${esc(i.fake_name)}</span><br>${esc(i.real_name || "")}<br><span class="fb-email">${esc(i.email || "")}</span></td>
-              <td>${esc(i.leader_code)}</td>
-              <td>${(i.recording_numbers || []).map((n) => `<span class="fb-chip">${n}</span>`).join("")}</td>
-              <td>${esc(i.issue_description || "—")}</td>
-              <td>${esc(new Date(i.created_at).toLocaleString("ar-EG", { timeZone: TZ, dateStyle: "medium", timeStyle: "short" }))}</td>
-              <td><span class="studio-pill ${st[0]}">${st[1]}</span></td>
-              <td class="${left && left.overdue ? "fb-late" : ""}">${i.status === "reworked" ? esc(new Date(i.reworked_at).toLocaleString("ar-EG", { timeZone: TZ, dateStyle: "short", timeStyle: "short" })) : i.is_final ? "—" : i.status === "expired" ? "الاسم اتسحب" : esc(left.text)}</td>
-            </tr>`;
-          }).join("")}</tbody>
-        </table></div>`).join("");
-    } catch (err) {
-      $("items-wrap").innerHTML = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`;
-    }
+      $("delivered-wrap").innerHTML = tasks.map((t) => `<h3 style="margin:20px 0 10px;">${esc(t.title)}</h3>${t.files.map((f) => `
+        <div class="studio-card fb-file">
+          <div class="fb-fhead"><h4>📄 ${f.fileName ? esc(f.fileName) : "<span>ملف قديم</span>"} <span class="studio-hint">· <span>اترفع</span> ${esc(fmt(f.createdAt))}</span></h4></div>
+          ${f.batches.map((b) => `
+            <details class="fb-batch">
+              <summary>
+                <b>${b.gender === "male" ? "👦 <span>ولاد</span>" : "👧 <span>بنات</span>"}</b>
+                <span>${b.people.length} <span>أشخاص</span></span>
+                <span class="studio-hint"><span>اتسلّم</span> ${esc(fmt(b.deliveredAt || b.createdAt))}</span>
+                ${b.status === "collecting" ? `<span class="studio-pill status-pending">⏳ بيتجمّع</span>` : ""}
+                ${b.status === "delivered" && !b.zipPurgedAt ? `<button class="studio-btn studio-btn-secondary" style="padding:4px 10px;" data-zip="${esc(b.id)}">⬇️ ZIP</button>` : ""}
+                ${b.zipPurgedAt ? `<span class="studio-hint"><span>الـ ZIP اتمسح من التخزين</span></span>` : ""}
+                ${b.status === "delivered" ? `<button class="studio-btn studio-btn-secondary" style="padding:4px 10px;" data-batch-sheet="${esc(b.id)}">⬇️ <span>الشيت</span></button>` : ""}
+              </summary>
+              <div class="studio-table-wrap" style="margin-top:10px;"><table class="studio-table">
+                <thead><tr><th>الاسم في الملف</th><th>الاسم المستعار</th><th>الجمل المعادة</th><th>سلّم الريورك</th><th>QA</th><th>الليدر</th></tr></thead>
+                <tbody>${b.people.map((p) => `<tr><td class="fb-email">${esc(p.label)}</td><td><span class="studio-code">${esc(p.fakeName)}</span></td><td>${p.numbers.map(chip).join("")}</td><td>${esc(fmt(p.reworkedAt, true))}</td><td>${esc(p.qaName || "—")}</td><td>${esc(p.leaderCode)}</td></tr>`).join("")}</tbody>
+              </table></div>
+            </details>`).join("")}
+        </div>`).join("")}`).join("");
+    } catch (err) { $("delivered-wrap").innerHTML = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`; }
   }
-  $("filter-task").addEventListener("change", loadItems);
+  $("delivered-wrap").addEventListener("click", async (ev) => {
+    const zip = ev.target.closest("[data-zip]");
+    if (zip) { ev.preventDefault(); try { await NMStudio.openBatchZip(zip.dataset.zip); } catch (err) { toast(esc(err.message), true); } return; }
+    const sh = ev.target.closest("[data-batch-sheet]");
+    if (sh) { ev.preventDefault(); try { await NMStudio.downloadReworkBatchSheet(sh.dataset.batchSheet, "Rework sheet.xlsx"); } catch (err) { toast(esc(err.message), true); } }
+  });
 
-  loadTasks().then(loadItems);
+  loadTasks().then(() => showMainTab(MAIN.includes(location.hash.replace("#", "")) ? location.hash.replace("#", "") : "board"));
 </script>
 </body>
 </html>

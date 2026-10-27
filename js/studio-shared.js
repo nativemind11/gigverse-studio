@@ -251,6 +251,15 @@
     return apiFetch(`/api/studio/feedback/items${taskId ? `?taskId=${encodeURIComponent(taskId)}` : ""}`);
   }
   function apiMyFeedback() { return apiFetch("/api/studio/feedback/mine"); }
+  // v7: the feedback page (task -> file -> person), collecting the rework, the delivered rework
+  const qTask = (taskId) => (taskId ? `?taskId=${encodeURIComponent(taskId)}` : "");
+  function apiFeedbackBoard(taskId) { return apiFetch(`/api/studio/feedback/board${qTask(taskId)}`); }
+  function apiFeedbackDelivered(taskId) { return apiFetch(`/api/studio/feedback/delivered${qTask(taskId)}`); }
+  function apiFeedbackCollect(fileId, gender) {
+    return apiFetch(`/api/studio/feedback/files/${encodeURIComponent(fileId)}/collect`, { method: "POST", body: JSON.stringify({ gender }) });
+  }
+  function downloadFeedbackSheet(fileId, filename) { return downloadWithAuth(`/api/studio/feedback/files/${encodeURIComponent(fileId)}/sheet`, filename); }
+  function downloadReworkBatchSheet(batchId, filename) { return downloadWithAuth(`/api/studio/feedback/batches/${encodeURIComponent(batchId)}/sheet`, filename); }
 
   // "باقي 7 ساعات و 20 دقيقة" / "المهلة خلصت من 3 ساعات"
   function timeLeft(iso) {
@@ -273,5 +282,6 @@
     apiGetTask, apiUpdateTask, apiDeleteTask, apiRemoveTaskLeader, apiUpdateSample, apiDeleteScript, apiUpdateQuotas, apiUpdateLeaderQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
     apiGetPendingDelivery, apiGetDeliveredBatches, openBatchZip, apiGetStorage, apiMarkDownloaded, apiPurgeStorage, apiCollectGroup, downloadGroupSheet, downloadBatchSheet,
     apiFeedbackParse, apiFeedbackPreview, apiFeedbackApply, apiFeedbackItems, apiMyFeedback, timeLeft,
+    apiFeedbackBoard, apiFeedbackDelivered, apiFeedbackCollect, downloadFeedbackSheet, downloadReworkBatchSheet,
   };
 })();
