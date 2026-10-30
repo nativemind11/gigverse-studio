@@ -104,6 +104,22 @@
       btn.textContent = "دخول";
     }
   });
+  // Back button: the browser can bring this page back exactly as it was left — email and password still typed,
+  // the button stuck on "جاري الدخول...". Whenever the page is shown again from history, start clean.
+  function freshAfterBack() {
+    const nav = (window.performance && performance.getEntriesByType && performance.getEntriesByType("navigation")[0]) || {};
+    return nav.type === "back_forward";
+  }
+  window.addEventListener("pageshow", (e) => {
+    if (!(e.persisted || freshAfterBack())) return;
+    const clean = () => {
+      document.getElementById("login-form").reset();
+      document.getElementById("login-error").style.display = "none";
+      const btn = document.getElementById("login-btn");
+      btn.disabled = false; btn.textContent = "دخول";
+    };
+    clean(); setTimeout(clean, 120);   // again: some browsers put the old values back a moment after the page shows
+  });
 </script>
 </body>
 </html>

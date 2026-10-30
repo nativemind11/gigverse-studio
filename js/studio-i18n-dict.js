@@ -1157,7 +1157,7 @@ window.STUDIO_I18N = { en: {
   "أنثى (female)": "Female",
   "اختار": "Choose",
   "الفئة العمرية بتاعتك:": "Your age group:",
-  "اكتب السن بالأرقام (من 5 لـ 100)": "Enter your age in numbers (5 to 100)",
+  "اكتب السن بالأرقام (من 5 لـ 80)": "Enter your age in numbers (5 to 80)",
   "الاسم لازم يتكتب بالإنجليزي (حروف ومسافات بس، من غير أرقام ولا رموز)": "The name must be written in English (letters and spaces only, no digits or symbols)",
   "اختار النوع: ذكر أو أنثى": "Choose a gender: male or female",
   "السيرفر لسه بيتحدّث. حاول بعد شوية.": "The server is still updating. Try again in a moment.",

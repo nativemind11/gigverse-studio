@@ -16,8 +16,10 @@ test("signup form: asks name (English), gender, age; previews the age group; sen
   p.d.querySelector('[data-mode="signup"]').click();
   const set = (id, v) => { const e = p.d.getElementById(id); e.value = v; e.dispatchEvent(new p.w.Event("input", { bubbles: true })); };
   set("s-age", "٢٧"); assert.match(p.d.getElementById("s-bracket").textContent, /بالغ/);
-  set("s-age", "12"); assert.match(p.d.getElementById("s-bracket").textContent, /طفل/);
-  set("s-age", "61"); assert.match(p.d.getElementById("s-bracket").textContent, /مسن/);
+  set("s-age", "13"); assert.match(p.d.getElementById("s-bracket").textContent, /طفل/);
+  set("s-age", "14"); assert.match(p.d.getElementById("s-bracket").textContent, /بالغ/);
+  set("s-age", "60"); assert.match(p.d.getElementById("s-bracket").textContent, /مسن/);
+  set("s-age", "81"); assert.equal(p.d.getElementById("s-bracket").textContent.trim(), "");
   set("s-age", "2"); assert.equal(p.d.getElementById("s-bracket").textContent.trim(), "");
   set("s-name", "Sara Hassan"); set("s-email", "s@x.com"); set("s-password", "secret1"); set("s-gender", "female"); set("s-age", "٣٤");
   p.d.getElementById("signup-form").dispatchEvent(new p.w.Event("submit", { cancelable: true }));
