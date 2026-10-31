@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>القبول من الشركة — Studio</title>
+<meta name="description" content="سجّل جملك الصوتية وسلّمها بسهولة · Record and submit voice tasks">
+<meta name="theme-color" content="#0B0D10">
+<link rel="icon" type="image/svg+xml" href="assets/favicon.svg">
+<link rel="icon" type="image/png" sizes="32x32" href="assets/favicon-32.png">
+<link rel="icon" href="assets/favicon.ico" sizes="any">
+<link rel="apple-touch-icon" href="assets/apple-touch-icon.png">
+<meta property="og:type" content="website">
+<meta property="og:site_name" content="Studio">
+<meta property="og:locale" content="ar_AR">
+<meta property="og:title" content="القبول من الشركة — Studio">
+<meta property="og:description" content="سجّل جملك الصوتية وسلّمها بسهولة · Record and submit voice tasks">
+<meta property="og:url" content="https://gigversestudio.click/acceptance.html">
+<meta property="og:image" content="https://gigversestudio.click/assets/og-image.png?v=1">
+<meta property="og:image:type" content="image/png">
+<meta property="og:image:width" content="1200">
+<meta property="og:image:height" content="630">
+<meta property="og:image:alt" content="Studio">
+<meta name="twitter:card" content="summary_large_image">
+<meta name="twitter:title" content="القبول من الشركة — Studio">
+<meta name="twitter:description" content="سجّل جملك الصوتية وسلّمها بسهولة · Record and submit voice tasks">
+<meta name="twitter:image" content="https://gigversestudio.click/assets/og-image.png?v=1">
+<link rel="stylesheet" href="css/studio.css">
+<script src="js/config.js"></script>
+<script src="js/studio-i18n-dict.js"></script>
+<script src="js/studio-i18n.js"></script>
+<style>
+  .ac-stats { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; margin: 18px 0; }
+  .ac-stat { background: linear-gradient(180deg, #141b1d, #0f1416); border: 1px solid #222c2e; border-radius: 14px; padding: 14px 16px; display: flex; flex-direction: column; gap: 4px; cursor: pointer; transition: border-color .15s, transform .15s; }
+  .ac-stat:hover { border-color: rgba(45, 212, 191, .45); transform: translateY(-2px); }
+  .ac-stat.on { border-color: var(--studio-accent); box-shadow: 0 0 0 1px var(--studio-accent) inset; }
+  .ac-stat b { font-size: 1.7rem; font-family: var(--studio-mono); line-height: 1.1; }
+  .ac-stat span { font-size: .8rem; color: var(--studio-text-muted); }
+  .ac-stat.full b { color: #4ade80; } .ac-stat.partial b { color: var(--studio-warn); } .ac-stat.none b { color: var(--studio-accent); }
+  .ac-bar-row { display: flex; gap: 12px; flex-wrap: wrap; align-items: center; margin: 4px 0 14px; }
+  .ac-bar-row input, .ac-bar-row select { min-width: 0; }
+  .ac-bar-row .grow { flex: 1 1 240px; }
+  .ac-title { font-weight: 800; }
+  .ac-sub { display: flex; gap: 6px 10px; flex-wrap: wrap; align-items: center; font-size: .75rem; color: var(--studio-text-muted); margin-top: 4px; }
+  .ac-tag { display: inline-block; border: 1px solid var(--studio-border); background: var(--studio-surface-2); border-radius: 999px; padding: 1px 9px; font-size: .72rem; color: var(--studio-text-muted); white-space: nowrap; }
+  .ac-prog { min-width: 130px; }
+  .ac-prog .nums { font-family: var(--studio-mono); font-weight: 700; direction: ltr; text-align: start; }
+  .ac-prog .nums small { color: var(--studio-text-muted); font-weight: 400; }
+  .ac-meter { height: 6px; border-radius: 999px; background: rgba(255,255,255,.07); overflow: hidden; margin-top: 6px; }
+  .ac-meter i { display: block; height: 100%; border-radius: 999px; background: linear-gradient(90deg, #14b8a6, var(--studio-accent)); }
+  .ac-meter.full i { background: linear-gradient(90deg, #22c55e, #4ade80); }
+  .ac-meter.partial i { background: linear-gradient(90deg, #f59e0b, #fbbf24); }
+  .ac-acts { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ac-acts .studio-btn { padding: 6px 12px; font-size: .78rem; }
+  .ac-danger { color: var(--studio-danger) !important; border-color: rgba(240, 85, 90, .4) !important; }
+  .ac-detail td { background: rgba(45, 212, 191, .03); padding: 16px 18px; }
+  .ac-detail h4 { margin: 0 0 8px; }
+  .ac-sec { margin-bottom: 18px; }
+  .ac-sec table { width: 100%; }
+  .ac-tabs { display: flex; gap: 6px; margin: 8px 0; flex-wrap: wrap; }
+  .ac-tab { padding: 6px 13px; border-radius: 8px; font-size: .8rem; font-weight: 700; color: var(--studio-text-muted); cursor: pointer; background: var(--studio-surface-2); }
+  .ac-tab.active { background: var(--studio-accent); color: #04211D; }
+  .ac-more { margin: 14px auto 0; display: block; }
+  .ac-ok { color: #4ade80; font-weight: 700; }
+  .ac-faint { color: var(--studio-text-muted); }
+  .ac-code { font-family: var(--studio-mono); direction: ltr; unicode-bidi: plaintext; }
+
+  .fb-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(210px, 1fr)); gap: 14px; margin: 14px 0; }
+  .fb-step { margin-bottom: 20px; }
+  .fb-step h3 { margin: 0 0 4px; }
+  .fb-radio { display: flex; gap: 14px; flex-wrap: wrap; margin-top: 6px; font-size: 0.9rem; }
+  .fb-radio label { display: flex; gap: 6px; align-items: center; cursor: pointer; }
+  .fb-raw td, .fb-raw th { font-size: 0.8rem; max-width: 190px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  .fb-raw .col-label { background: rgba(45, 212, 191, 0.12); }
+  .fb-raw .col-status { background: rgba(248, 113, 113, 0.12); }
+  .fb-how { display: block; font-size: 0.75rem; color: var(--studio-text-dim, #9aa4b2); margin-top: 2px; max-width: 220px; }
+  .fb-how.weak { color: #fbbf24; }
+  .fb-names { border: 1px solid rgba(96, 165, 250, 0.5); background: rgba(96, 165, 250, 0.07); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  .fb-names table { width: 100%; }
+  .fb-names td { padding: 6px 8px; vertical-align: middle; }
+  .fb-check { display: flex; gap: 8px; align-items: center; cursor: pointer; margin: 4px 0; }
+  .fb-warn { border: 1px solid rgba(251, 191, 36, 0.55); background: rgba(251, 191, 36, 0.08); border-radius: 12px; padding: 12px 16px; margin: 12px 0; }
+  .fb-warn ul { padding-inline-start: 20px; line-height: 1.8; margin: 8px 0; }
+  .fb-err { color: var(--studio-danger); font-size: 0.85rem; }
+  .fb-ok { color: var(--studio-accent); font-weight: 700; }
+  .fb-summary { display: flex; gap: 10px; flex-wrap: wrap; margin: 12px 0; }
+  .fb-email { font-family: var(--studio-mono); font-size: 0.8rem; direction: ltr; unicode-bidi: plaintext; }
+  .fb-toast { position: fixed; bottom: 20px; inset-inline: 20px; max-width: 560px; margin-inline: auto; z-index: 50; background: var(--studio-surface); border: 1px solid var(--studio-accent); border-radius: 12px; padding: 14px 16px; font-size: 0.9rem; line-height: 1.7; }
+  .fb-toast.bad { border-color: var(--studio-danger); color: var(--studio-danger); }
+</style>
+</head>
+<body class="studio" data-i18n-reload>
+
+<header class="studio-header">
+  <div class="studio-logo"><span class="dot"></span> Studio</div>
+  <nav>
+    <a href="dashboard-head-leader.html" class="studio-btn studio-btn-secondary" style="padding:8px 16px;">← اللوحة</a>
+    <a href="#" id="logout-link" class="studio-btn studio-btn-secondary" style="padding:8px 16px;">خروج</a>
+  </nav>
+</header>
+
+<main class="studio-shell wide">
+  <div class="studio-eyebrow">لوحة الهيد ليدر</div>
+  <h1 class="studio-title">القبول من الشركة</h1>
+  <p class="studio-subtitle">جميع المهام التي أنشأتها في مكان واحد. ارفع ملف الشركة الذي يضم أسماء الأشخاص المقبولين في كل مهمة، ليطابق النظام كل شخص مع الليدر الخاص به ويسجّل قبول عمله، ويظهر ذلك في حسابه وفي حساب الليدر.</p>
+
+  <div class="ac-stats" id="stats"></div>
+
+  <!-- upload panel for ONE task (opens from the task's row) -->
+  <section id="up-panel" class="hidden">
+    <div class="studio-card fb-step" id="step-upload">
+      <h3><span>رفع ملف القبول للمهمة:</span> <span id="up-title" class="ac-title"></span></h3>
+      <p class="studio-hint">ملف الشركة (Excel أو CSV) الذي يضم أسماء الأشخاص المقبولين. المقصود بالاسم هنا ما تعرفه الشركة: الاسم المستعار أو الكود أو الاسم الحقيقي، بحسب نوع المهمة.</p>
+      <div class="fb-grid">
+        <div class="studio-field" style="margin:0;">
+          <label for="file-input">ملف الشركة (Excel .xlsx أو CSV)</label>
+          <input type="file" id="file-input" accept=".xlsx,.csv">
+        </div>
+      </div>
+      <button class="studio-btn studio-btn-primary" id="parse-btn">قراءة الملف</button>
+      <button class="studio-btn studio-btn-secondary" id="up-cancel" style="margin-inline-start:8px;">إلغاء</button>
+      <p class="studio-error" id="upload-error"></p>
+    </div>
+
+    <div class="studio-card fb-step hidden" id="step-map">
+      <h3>2) حدّد الأعمدة</h3>
+      <p class="studio-hint">تم اختيار العمود الأقرب لأن يكون الأسماء، ويمكنك تعديله عند الحاجة.</p>
+      <p class="studio-hint hidden" id="detect-note" style="color:var(--studio-accent);">✨ تعرّف النظام على عمود الأسماء من محتواه وليس من عنوانه — يُرجى مراجعته قبل المعاينة.</p>
+      <div class="fb-grid">
+        <div class="studio-field" style="margin:0;" id="sheet-field">
+          <label for="sheet-select">الشيت</label>
+          <select id="sheet-select"></select>
+        </div>
+        <div class="studio-field" style="margin:0;">
+          <label for="header-row">رقم صف العناوين</label>
+          <input type="number" id="header-row" min="1" value="1">
+        </div>
+        <div class="studio-field" style="margin:0;">
+          <label for="label-col">عمود الاسم</label>
+          <select id="label-col"></select>
+          <div class="fb-radio">
+            <label><input type="radio" name="label-type" value="smart"> اسم + إضافات (نوع/سن/فئة) — يقارن الاسم بس</label>
+            <label><input type="radio" name="label-type" value="fake" checked> اسم / كود مطابق تمامًا</label>
+            <label><input type="radio" name="label-type" value="zip"> اسم ملف ZIP كامل</label>
+          </div>
+        </div>
+        <div class="studio-field" style="margin:0;">
+          <label for="status-col">عمود الحالة (اختياري)</label>
+          <select id="status-col"></select>
+          <div id="status-values" style="margin-top:8px;"></div>
+        </div>
+      </div>
+      <div class="studio-table-wrap"><table class="studio-table fb-raw" id="raw-table"></table></div>
+      <div style="margin-top:14px;"><button class="studio-btn studio-btn-primary" id="preview-btn">معاينة النتيجة</button></div>
+      <p class="studio-error" id="map-error"></p>
+    </div>
+
+    <div class="studio-card fb-step hidden" id="step-preview">
+      <h3>3) المعاينة</h3>
+      <div class="fb-summary" id="summary"></div>
+      <div id="names-box"></div>
+      <div id="bad-box"></div>
+      <div id="warn-box"></div>
+      <div class="studio-table-wrap"><table class="studio-table" id="result-table"></table></div>
+      <div style="margin-top:14px;">
+        <button class="studio-btn studio-btn-primary" id="apply-btn">✅ تسجيل القبول</button>
+        <span class="studio-hint" id="apply-hint" style="margin-inline-start:10px;"></span>
+      </div>
+      <p class="studio-error" id="apply-error"></p>
+    </div>
+  </section>
+
+  <!-- every task -->
+  <div class="ac-bar-row">
+    <div class="studio-field grow" style="margin:0;"><input type="search" id="q" placeholder="ابحث باسم المهمة..."></div>
+    <div class="studio-field" style="margin:0; min-width:190px;">
+      <select id="filter">
+        <option value="all">كل المهام</option>
+        <option value="full">مقبولة بالكامل</option>
+        <option value="partial">مقبولة جزئيًا</option>
+        <option value="none">لم تُقبل بعد</option>
+        <option value="no_delivery">لا يوجد تسليم للشركة</option>
+      </select>
+    </div>
+    <div class="studio-field" style="margin:0; min-width:190px;">
+      <select id="sort">
+        <option value="new">الأحدث الأول</option>
+        <option value="old">الأقدم الأول</option>
+        <option value="name">بالاسم (أ - ي)</option>
+        <option value="pct">الأقل قبولًا الأول</option>
+      </select>
+    </div>
+  </div>
+  <div id="board-wrap"><div class="studio-empty"><p>جاري التحميل...</p></div></div>
+</main>
+
+<div id="toast" class="fb-toast hidden"></div>
+
+<script src="js/studio-shared.js"></script>
+<script>
+  NMStudio.requireStudioRole("head_leader");
+  document.getElementById("logout-link").addEventListener("click", (e) => { e.preventDefault(); NMStudio.logout(); location.href = "login.html"; });
+
+  const $ = (id) => document.getElementById(id);
+  const esc = (s) => { const d = document.createElement("div"); d.textContent = s == null ? "" : String(s); return d.innerHTML; };
+  const TZ = "Africa/Cairo";
+  const LOCALE = localStorage.getItem("studio_lang") === "en" ? "en-GB" : "ar-EG";
+  const fmt = (iso, short) => iso ? new Date(iso).toLocaleString(LOCALE, { timeZone: TZ, dateStyle: short ? "short" : "medium", timeStyle: short ? undefined : "short" }) : "";
+  const SYM = { male: "♂", female: "♀" };
+
+  function toast(html, bad) {
+    const t = $("toast");
+    t.className = "fb-toast" + (bad ? " bad" : "");
+    t.innerHTML = html;
+    clearTimeout(toast._h);
+    toast._h = setTimeout(() => t.classList.add("hidden"), bad ? 9000 : 14000);
+  }
+  function showErr(id, msg) { const el = $(id); el.textContent = msg || ""; el.style.display = msg ? "block" : "none"; }
+
+  // ====================================================================== the board: every task
+  let board = { tasks: [], totals: {} };
+  let filter = "all", sort = "new", q = "", shown = 25;
+  let openId = null;            // the task whose details are open
+  let detail = null;            // its files + people
+  let pFilter = "all", pQuery = "", pShown = 100;
+
+  const IDENT = { names: "أسماء مستعارة", codes: "أكواد", real: "أسماء حقيقية" };
+  const TSTATUS = { published: ["status-approved", "منشورة"], draft: ["status-pending", "مسودة"], closed: ["status-pending", "مقفولة"] };
+  const STATE = {
+    full: ["status-approved", "✅ مقبولة بالكامل"],
+    partial: ["status-pending", "🟡 مقبولة جزئيًا"],
+    none: ["status-pending", "⏳ لم تُقبل بعد"],
+    no_delivery: ["", "— لا يوجد تسليم للشركة"],
+  };
+
+  async function loadBoard() {
+    try { board = await NMStudio.apiAcceptanceBoard(); renderAll(); }
+    catch (err) { $("board-wrap").innerHTML = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`; $("stats").innerHTML = ""; }
+  }
+
+  function renderStats() {
+    const t = board.totals || {};
+    const card = (key, n, label, cls) => `<div class="ac-stat ${cls} ${filter === key ? "on" : ""}" data-f="${key}"><b>${n}</b><span>${label}</span></div>`;
+    $("stats").innerHTML = card("all", t.tasks || 0, "<span>كل المهام</span>", "") + card("full", t.full || 0, "<span>مقبولة بالكامل</span>", "full")
+      + card("partial", t.partial || 0, "<span>مقبولة جزئيًا</span>", "partial") + card("none", t.none || 0, "<span>لم تُقبل بعد</span>", "none");
+    $("stats").querySelectorAll(".ac-stat").forEach((el) => el.addEventListener("click", () => { filter = el.dataset.f; $("filter").value = filter; shown = 25; renderAll(); }));
+  }
+
+  function visibleTasks() {
+    const needle = q.trim().toLowerCase();
+    let list = board.tasks.filter((t) => (filter === "all" || t.state === filter) && (!needle || String(t.title).toLowerCase().includes(needle)));
+    const pct = (t) => (t.delivered ? t.accepted / t.delivered : 2);
+    list = list.slice().sort((a, b) => sort === "old" ? new Date(a.createdAt) - new Date(b.createdAt)
+      : sort === "name" ? String(a.title).localeCompare(String(b.title))
+      : sort === "pct" ? pct(a) - pct(b) || new Date(b.createdAt) - new Date(a.createdAt)
+      : new Date(b.createdAt) - new Date(a.createdAt));
+    return list;
+  }
+
+  function rowHtml(t) {
+    const st = STATE[t.state], ts = TSTATUS[t.status] || ["", t.status];
+    const pct = t.delivered ? Math.min(100, Math.round((t.accepted / t.delivered) * 100)) : 0;
+    const meterCls = t.state === "full" ? "full" : t.state === "partial" ? "partial" : "";
+    const open = openId === t.id;
+    return `<tr data-id="${esc(t.id)}">
+      <td><div class="ac-title">${esc(t.title)}</div>
+        <div class="ac-sub"><span>${esc(fmt(t.createdAt, true))}</span><span class="studio-pill ${ts[0]}">${ts[1]}</span>
+          <span class="ac-tag">${IDENT[t.identityMode] || ""}</span>${t.direct ? `<span class="ac-tag">نشر مباشر</span>` : ""}${t.finished ? `<span class="ac-tag">🧹 أُغلقت نهائيًا</span>` : ""}</div></td>
+      <td><b class="ac-code">${t.delivered}</b></td>
+      <td class="ac-prog"><div class="nums">${t.accepted}<small> / ${t.delivered}</small></div><div class="ac-meter ${meterCls}"><i style="width:${pct}%"></i></div></td>
+      <td>${t.files ? `<div class="ac-code">${esc(t.lastFileName || "")}</div><div class="ac-sub"><span>${esc(fmt(t.lastFileAt, true))}</span><span class="ac-tag"><b>${t.files}</b> <span>ملف</span></span></div>` : `<span class="ac-faint">—</span>`}</td>
+      <td><span class="studio-pill ${st[0]}">${st[1]}</span></td>
+      <td><div class="ac-acts">
+        <button class="studio-btn studio-btn-primary" data-act="upload" ${t.delivered ? "" : "disabled"}>📤 <span>رفع ملف القبول</span></button>
+        <button class="studio-btn studio-btn-secondary" data-act="details">${open ? "▲ <span>إخفاء</span>" : "👁 <span>تفاصيل</span>"}</button>
+        <button class="studio-btn studio-btn-secondary ac-danger" data-act="delete">🗑 <span>حذف نهائي</span></button>
+      </div></td></tr>${open ? `<tr class="ac-detail"><td colspan="6" id="detail-cell"><div class="studio-hint">جاري التحميل...</div></td></tr>` : ""}`;
+  }
+
+  function renderBoard() {
+    const list = visibleTasks();
+    if (!board.tasks.length) { $("board-wrap").innerHTML = `<div class="studio-empty"><div class="icon">📋</div><p>لم يتم إنشاء أي مهمة بعد.</p></div>`; return; }
+    if (!list.length) { $("board-wrap").innerHTML = `<div class="studio-empty"><div class="icon">🔎</div><p>لا توجد مهام مطابقة.</p></div>`; return; }
+    const part = list.slice(0, shown);
+    $("board-wrap").innerHTML = `<div class="studio-table-wrap"><table class="studio-table">
+      <thead><tr><th>المهمة</th><th>المُسلَّم للشركة</th><th>المقبول</th><th>آخر ملف قبول</th><th>حالة القبول</th><th></th></tr></thead>
+      <tbody>${part.map(rowHtml).join("")}</tbody></table></div>
+      ${list.length > shown ? `<button class="studio-btn studio-btn-secondary ac-more" id="more-btn">⬇ <span>عرض المزيد</span> (<b>${list.length - shown}</b>)</button>` : ""}`;
+    if ($("more-btn")) $("more-btn").addEventListener("click", () => { shown += 25; renderBoard(); });
+    $("board-wrap").querySelectorAll("button[data-act]").forEach((b) => b.addEventListener("click", () => {
+      const id = b.closest("tr").dataset.id, task = board.tasks.find((x) => x.id === id);
+      if (b.dataset.act === "upload") startUpload(task);
+      else if (b.dataset.act === "details") toggleDetail(id);
+      else if (b.dataset.act === "delete") deleteTask(task);
+    }));
+    if (openId) renderDetail();
+  }
+  function renderAll() { renderStats(); renderBoard(); }
+
+  $("q").addEventListener("input", (e) => { q = e.target.value; shown = 25; renderBoard(); });
+  $("filter").addEventListener("change", (e) => { filter = e.target.value; shown = 25; renderAll(); });
+  $("sort").addEventListener("change", (e) => { sort = e.target.value; renderBoard(); });
+
+  // ---------------------------------------------------------------- details: files + people of one task
+  async function toggleDetail(id) {
+    if (openId === id) { openId = null; detail = null; renderBoard(); return; }
+    openId = id; detail = null; pFilter = "all"; pQuery = ""; pShown = 100;
+    renderBoard();
+    await reloadDetail();
+  }
+  async function reloadDetail() {
+    if (!openId) return;
+    try { detail = await NMStudio.apiAcceptanceTask(openId); renderDetail(); }
+    catch (err) { const c = $("detail-cell"); if (c) c.innerHTML = `<div class="fb-err">${esc(err.message)}</div>`; }
+  }
+  function renderDetail() {
+    const cell = $("detail-cell");
+    if (!cell || !detail) return;
+    const ppl = detail.people, acc = ppl.filter((p) => p.acceptedAt).length;
+    const needle = pQuery.trim().toLowerCase();
+    const list = ppl.filter((p) => (pFilter === "all" || (pFilter === "yes" ? p.acceptedAt : !p.acceptedAt))
+      && (!needle || [p.fakeName, p.realName, p.leaderCode].some((x) => String(x || "").toLowerCase().includes(needle))));
+    const files = detail.files.length
+      ? `<table class="studio-table"><thead><tr><th>الملف</th><th>التاريخ</th><th>عدد المقبولين</th><th></th></tr></thead><tbody>${detail.files.map((f) => `<tr>
+          <td class="ac-code">${esc(f.fileName || "—")}</td><td>${esc(fmt(f.createdAt))}</td><td><b>${f.accepted}</b></td>
+          <td><button class="studio-btn studio-btn-secondary ac-danger" data-file="${esc(f.id)}" style="padding:4px 10px; font-size:.75rem;">↩ <span>إلغاء الملف</span></button></td></tr>`).join("")}</tbody></table>`
+      : `<p class="studio-hint">لم يُرفع ملف قبول لهذه المهمة بعد.</p>`;
+    const tab = (k, label, n) => `<div class="ac-tab ${pFilter === k ? "active" : ""}" data-pf="${k}">${label} <b>${n}</b></div>`;
+    const idLabel = IDENT[detail.task.identityMode] === IDENT.codes ? "الكود" : IDENT[detail.task.identityMode] === IDENT.real ? "الاسم الحقيقي" : "الاسم المستعار";
+    cell.innerHTML = `
+      <div class="ac-sec"><h4>ملفات القبول</h4>${files}</div>
+      <div class="ac-sec"><h4>الأشخاص</h4>
+        <div class="ac-tabs">${tab("all", "<span>الكل</span>", ppl.length)}${tab("yes", "<span>المقبولون</span>", acc)}${tab("no", "<span>قيد الانتظار</span>", ppl.length - acc)}</div>
+        <div class="studio-field" style="max-width:300px; margin:0 0 8px;"><input type="search" id="p-q" placeholder="ابحث بالاسم أو كود الليدر..." value="${esc(pQuery)}"></div>
+        ${list.length ? `<div class="studio-table-wrap"><table class="studio-table"><thead><tr><th>${idLabel}</th><th>المتسجّل</th><th>الليدر</th><th>النوع</th><th>القبول</th><th></th></tr></thead>
+          <tbody>${list.slice(0, pShown).map((p) => `<tr>
+            <td><span class="studio-code">${esc(p.fakeName)}</span></td><td>${esc(p.realName || "—")}</td><td><span class="studio-code">${esc(p.leaderCode)}</span></td>
+            <td>${SYM[p.gender] || ""} ${p.age == null ? "" : esc(p.age)}</td>
+            <td>${p.acceptedAt ? `<span class="ac-ok">🏆 <span>مقبول</span></span><div class="ac-sub"><span>${esc(fmt(p.acceptedAt, true))}</span></div>`
+              : p.delivered ? `<span class="ac-faint">⏳ <span>قيد الانتظار</span></span>` : `<span class="ac-faint"><span>لم يُسلَّم للشركة بعد</span></span>`}</td>
+            <td>${p.acceptedAt ? `<button class="studio-btn studio-btn-secondary" data-unacc="${esc(p.id)}" style="padding:4px 10px; font-size:.75rem;">↩ <span>إلغاء القبول</span></button>` : ""}</td></tr>`).join("")}</tbody></table></div>
+          ${list.length > pShown ? `<button class="studio-btn studio-btn-secondary ac-more" id="p-more">⬇ <span>عرض المزيد</span> (<b>${list.length - pShown}</b>)</button>` : ""}`
+          : `<p class="studio-hint">لا يوجد أشخاص مطابقون.</p>`}
+      </div>`;
+    cell.querySelectorAll("[data-pf]").forEach((el) => el.addEventListener("click", () => { pFilter = el.dataset.pf; pShown = 100; renderDetail(); }));
+    const pq = $("p-q");
+    pq.addEventListener("input", (e) => { pQuery = e.target.value; pShown = 100; const pos = e.target.selectionStart; renderDetail(); const n = $("p-q"); n.focus(); n.setSelectionRange(pos, pos); });
+    if ($("p-more")) $("p-more").addEventListener("click", () => { pShown += 100; renderDetail(); });
+    cell.querySelectorAll("[data-file]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("سيتم إلغاء هذا الملف، وسيعود الأشخاص الذين قُبلوا من خلاله إلى حالة \"لم يُقبلوا بعد\" في حساباتهم وحسابات الليدرز. هل تريد المتابعة؟")) return;
+      try { await NMStudio.apiAcceptanceDeleteFile(b.dataset.file); toast("<span>✅ تم إلغاء الملف.</span>"); await loadBoard(); await reloadDetail(); }
+      catch (err) { toast(esc(err.message), true); }
+    }));
+    cell.querySelectorAll("[data-unacc]").forEach((b) => b.addEventListener("click", async () => {
+      if (!confirm("سيتم إلغاء قبول هذا المتسجّل. هل تريد المتابعة؟")) return;
+      try { await NMStudio.apiAcceptanceRemove(b.dataset.unacc); toast("<span>✅ تم إلغاء القبول.</span>"); await loadBoard(); await reloadDetail(); }
+      catch (err) { toast(esc(err.message), true); }
+    }));
+  }
+
+  // ---------------------------------------------------------------- delete a task for good (same endpoint as the dashboard's button)
+  async function deleteTask(t) {
+    if (!confirm("سيتم حذف هذه المهمة نهائيًا: السكريبت وتسجيلات جميع المتسجّلين والتسليمات والفيدباك وملفات القبول وكل ما يتعلق بها، ولا يمكن التراجع عن ذلك. هل تريد المتابعة؟")) return;
+    const typed = prompt(`اكتب اسم المهمة كما هو تمامًا لتأكيد الحذف النهائي:\n${t.title}`);
+    if (typed === null) return;
+    try {
+      const r = await NMStudio.apiDeleteTask(t.id, typed.trim());
+      if (openId === t.id) { openId = null; detail = null; }
+      toast(`<span>🗑 تم حذف المهمة نهائيًا.</span>${r && r.storageWarning ? ` <span>${esc(r.storageWarning)}</span>` : ""}`);
+      await loadBoard();
+    } catch (err) { toast(esc(err.message), true); }
+  }
+
+  // ====================================================================== upload one acceptance file
+  let task = null, file = null, sheets = [], lastPreview = null, nameMap = {}, namesOpen = null, acceptSet = new Set();
+
+  function startUpload(t) {
+    task = t; file = null; sheets = []; lastPreview = null; nameMap = {}; namesOpen = null; acceptSet = new Set();
+    $("up-panel").classList.remove("hidden");
+    $("up-title").textContent = t.title;
+    $("file-input").value = "";
+    ["step-map", "step-preview"].forEach((id) => $(id).classList.add("hidden"));
+    showErr("upload-error", "");
+    $("up-panel").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function closeUpload() { $("up-panel").classList.add("hidden"); task = null; file = null; lastPreview = null; }
+  $("up-cancel").addEventListener("click", closeUpload);
+
+  $("parse-btn").addEventListener("click", async () => {
+    showErr("upload-error", "");
+    file = $("file-input").files[0];
+    if (!file) return showErr("upload-error", "ارفع ملف الإكسيل.");
+    const btn = $("parse-btn");
+    btn.disabled = true; btn.textContent = "جاري القراءة...";
+    try {
+      nameMap = {}; namesOpen = null;
+      sheets = (await NMStudio.apiAcceptanceParse(file, task.id)).sheets;
+      $("sheet-select").innerHTML = sheets.map((s, i) => `<option value="${i}">${esc(s.name)} (${s.rowCount} صف)</option>`).join("");
+      $("sheet-field").classList.toggle("hidden", sheets.length < 2);
+      $("step-map").classList.remove("hidden");
+      $("step-preview").classList.add("hidden");
+      applySheet(0);
+    } catch (err) { showErr("upload-error", err.message); }
+    finally { btn.disabled = false; btn.textContent = "قراءة الملف"; }
+  });
+
+  const colName = (c) => `${c.letter} — ${c.header || "(بدون عنوان)"}`;
+  function columnsFor(sheet, headerRow) {
+    const row = sheet.preview[headerRow - 1];
+    if (!row) return sheet.columns;
+    const width = Math.max(sheet.colCount, row.length);
+    return Array.from({ length: width }, (_, i) => ({ index: i, letter: String.fromCharCode(65 + (i % 26)), header: row[i] || "" }));
+  }
+  // a code is exact: matching "by first name" would be a guess. Names / real names: name + extras (gender / age / group) is forgiving.
+  const defaultLabelType = () => (task && task.identityMode === "codes" ? "fake" : "smart");
+
+  function fillSelects(sheet, headerRow, guess) {
+    const cols = columnsFor(sheet, headerRow);
+    const opts = cols.map((c) => `<option value="${c.index}">${esc(colName(c))}</option>`).join("");
+    const pick = (id, val, none) => { $(id).innerHTML = (none ? `<option value="-1">— بدون —</option>` : `<option value="">— اختر —</option>`) + opts; $(id).value = val >= 0 ? String(val) : (none ? "-1" : ""); };
+    pick("label-col", guess.labelCol, false);
+    pick("status-col", guess.statusCol == null ? -1 : guess.statusCol, true);
+    document.querySelector(`input[name="label-type"][value="${guess.labelType || defaultLabelType()}"]`).checked = true;
+    acceptSet = new Set();
+    renderStatusValues();
+    renderRaw();
+  }
+  function renderStatusValues() {
+    const box = $("status-values"), col = Number($("status-col").value);
+    if (!(col >= 0)) { box.innerHTML = ""; return; }
+    const s = sheets[Number($("sheet-select").value)];
+    const vals = s && s.columns[col] && s.columns[col].values;
+    if (!vals) { box.innerHTML = `<p class="studio-hint">يحتوي هذا العمود على قيم كثيرة ولا يشبه عمود الحالة. اختر عمودًا به كلمات قليلة مثل مقبول / مرفوض.</p>`; return; }
+    box.innerHTML = `<p class="studio-hint" style="margin:0 0 6px;">حدّد القيم التي تعني "مقبول". سيتم تجاهل بقية القيم.</p>`
+      + vals.map((x, i) => `<label class="fb-check"><input type="checkbox" data-i="${i}" ${acceptSet.has(x.v) ? "checked" : ""}> ${esc(x.v)} <span class="studio-hint">(${x.n})</span></label>`).join("");
+    box.querySelectorAll("input[data-i]").forEach((inp) => inp.addEventListener("change", () => {
+      const v = vals[Number(inp.dataset.i)].v;
+      if (inp.checked) acceptSet.add(v); else acceptSet.delete(v);
+    }));
+  }
+  function applySheet(i) {
+    const s = sheets[i];
+    $("header-row").value = s.headerRow;
+    const d = s.detect || {};
+    const hasDetect = d.labelCol != null && d.labelCol >= 0;
+    fillSelects(s, s.headerRow, { ...s.guess, ...(s.suggest || {}), labelType: defaultLabelType(), ...(hasDetect ? { labelCol: d.labelCol } : {}), statusCol: -1 });
+    $("detect-note").classList.toggle("hidden", !hasDetect);
+  }
+  $("sheet-select").addEventListener("change", (e) => applySheet(Number(e.target.value)));
+  $("header-row").addEventListener("change", () => {
+    const s = sheets[Number($("sheet-select").value)];
+    const hr = Math.max(1, Number($("header-row").value) || 1);
+    fillSelects(s, hr, { labelCol: Number($("label-col").value || -1), statusCol: Number($("status-col").value || -1), labelType: document.querySelector('input[name="label-type"]:checked').value });
+  });
+  $("label-col").addEventListener("change", renderRaw);
+  $("status-col").addEventListener("change", () => { acceptSet = new Set(); renderStatusValues(); renderRaw(); });
+
+  function renderRaw() {
+    const s = sheets[Number($("sheet-select").value)];
+    if (!s) return;
+    const hr = Math.max(1, Number($("header-row").value) || 1);
+    const cols = columnsFor(s, hr);
+    const cls = (i) => (String(i) === $("label-col").value ? "col-label" : String(i) === $("status-col").value ? "col-status" : "");
+    const rows = s.preview.slice(hr - 1, hr + 5);
+    $("raw-table").innerHTML = `<thead><tr>${cols.map((c) => `<th class="${cls(c.index)}">${esc(colName(c))}</th>`).join("")}</tr></thead>
+      <tbody>${rows.slice(1).map((r) => `<tr>${cols.map((c) => `<td class="${cls(c.index)}">${esc(r[c.index] || "")}</td>`).join("")}</tr>`).join("")}</tbody>`;
+  }
+
+  function mapping() {
+    return {
+      taskId: task.id, sheetIndex: $("sheet-select").value, headerRow: $("header-row").value, labelCol: $("label-col").value,
+      labelType: document.querySelector('input[name="label-type"]:checked').value, statusCol: $("status-col").value || "-1",
+      acceptValues: JSON.stringify([...acceptSet]), nameMap: JSON.stringify(nameMap),
+    };
+  }
+
+  $("preview-btn").addEventListener("click", async () => {
+    showErr("map-error", "");
+    const m = mapping();
+    if (m.labelCol === "") return showErr("map-error", "اختر عمود الاسم.");
+    if (Number(m.statusCol) >= 0 && !acceptSet.size) return showErr("map-error", "حدّد القيم التي تعني \"مقبول\" في عمود الحالة.");
+    const btn = $("preview-btn");
+    btn.disabled = true; btn.textContent = "جاري المعاينة...";
+    try { lastPreview = await NMStudio.apiAcceptancePreview(file, m); renderPreview(); }
+    catch (err) { showErr("map-error", err.message); }
+    finally { btn.disabled = false; btn.textContent = "معاينة النتيجة"; }
+  });
+
+  // ---- name matching panel (same idea as the feedback page): every name in the file, who it was matched to, a list to change it
+  const HOW = { exact: "✅ الاسم كامل", prefix: "✅ الاسم كامل", first: "✅ بالاسم الأول", second: "✅ بالاسم الأول والثاني", extras: "⚠️ بالسن/النوع", manual: "✋ اختيار يدوي" };
+  function renderNames() {
+    const box = $("names-box");
+    const names = lastPreview.names || [];
+    if (!names.length) { box.innerHTML = ""; return; }
+    const people = lastPreview.people || [];
+    const lab = (p) => `${p.fakeName}${p.gender ? " — " + SYM[p.gender] : ""}${p.age != null ? " — " + p.age : ""}${p.accepted ? " — 🏆" : ""}`;
+    const opt = (p) => `<option value="${esc(p.id)}">${esc(lab(p))}</option>`;
+    const byId = new Map(people.map((p) => [p.id, p]));
+    let none = 0, review = 0, sure = 0, pending = 0;
+    const rows = names.map((e) => {
+      const excluded = nameMap[e.label] === "none";
+      const chosen = excluded ? "" : (nameMap[e.label] || e.sessionId || "");
+      const notDel = !chosen && !excluded && !!e.notDelivered;
+      const problem = notDel ? "pending" : !chosen ? "none" : (e.how === "extras" || e.conflict) ? "review" : "sure";
+      if (problem === "pending") pending++; else if (problem === "none") none++; else if (problem === "review") review++; else sure++;
+      const near = (e.suggestions || []).map((id) => byId.get(id)).filter(Boolean);
+      const nearIds = new Set(near.map((p) => p.id));
+      const sel = chosen && byId.get(chosen) && !nearIds.has(chosen) ? [byId.get(chosen)] : [];
+      const first = [...sel, ...near];
+      const badge = excluded ? `<span class="fb-err">🚫 <span>تم إلغاء المطابقة</span></span>` : notDel ? `<span class="fb-how weak">⏳ <span>لم يُسلَّم للشركة بعد</span></span><span class="fb-how weak">${esc(e.notDelivered.fakeName)}</span>` : !chosen ? `<span class="fb-err">❌ <span>لا يوجد متسجّل مطابق</span></span>` : `<span class="${problem === "review" ? "fb-how weak" : "fb-ok"}">${HOW[e.how] || HOW.exact}</span>`;
+      const c = e.conflict ? `<span class="fb-how weak">⚠️ <span>الملف يذكر:</span> ${SYM[e.conflict.file.gender] || ""} ${esc(e.conflict.file.age || "")}</span><span class="fb-how weak"><span>المتسجّل:</span> ${SYM[e.person.gender] || ""} ${e.person.age == null ? "" : esc(e.person.age)}</span>` : "";
+      return `<tr><td class="fb-email">${esc(e.label)}</td><td><b>${e.rows}</b> <span>صف</span></td>
+        <td><select data-label="${esc(e.label)}"><option value="">${excluded ? "↺ استعادة المطابقة التلقائية" : "— اختر المتسجّل —"}</option>${chosen ? `<option value="none">🚫 ليس هو — إلغاء المطابقة</option>` : ""}${excluded ? `<option value="none">🚫 ليس هو (ملغاة)</option>` : ""}${first.length ? `<option disabled>الأقرب</option>${first.map(opt).join("")}` : ""}<option disabled>جميع من وصل تسليمهم للشركة</option>${people.map(opt).join("")}</select></td>
+        <td>${badge}${c}</td></tr>`;
+    });
+    const isOpen = namesOpen === null ? none + review > 0 : namesOpen;
+    box.innerHTML = `<details class="fb-names" ${isOpen ? "open" : ""}>
+      <summary><b>🔎 <span>مطابقة الأسماء</span></b>
+        <span class="studio-pill status-approved">✅ <b>${sure}</b> <span>مؤكد</span></span>
+        ${review ? `<span class="studio-pill status-pending">⚠️ <b>${review}</b> <span>يحتاج مراجعة</span></span>` : ""}
+        ${pending ? `<span class="studio-pill status-pending">⏳ <b>${pending}</b> <span>لم يُسلَّموا للشركة بعد</span></span>` : ""}
+        ${none ? `<span class="studio-pill status-rejected">❌ <b>${none}</b> <span>غير موجودين</span></span>` : ""}</summary>
+      <p class="studio-hint" style="margin:8px 0;"><span>يُسجَّل القبول فقط للأشخاص الذين وصل تسليمهم إلى الشركة فعلًا. أي اسم آخر يظهر بعبارة "لم يُسلَّم للشركة بعد" ولا يتم تسجيله.</span></p>
+      <p class="studio-hint" style="margin:8px 0;"><span>راجع كل اسم. إذا أخطأ النظام في المطابقة فاختر المتسجّل الصحيح من القائمة (تضم فقط أشخاص هذه المهمة الذين وصل تسليمهم إلى الشركة)، ويُطبَّق اختيارك على جميع صفوف هذا الاسم.</span></p>
+      <table><thead><tr><th>الاسم في الملف</th><th>الصفوف</th><th>المتسجّل</th><th>المطابقة</th></tr></thead><tbody>${rows.join("")}</tbody></table></details>`;
+    box.querySelector("details").addEventListener("toggle", (ev) => { namesOpen = ev.target.open; });
+    box.querySelectorAll("select").forEach((sel) => {
+      const e = names.find((x) => x.label === sel.dataset.label);
+      sel.value = nameMap[e.label] || e.sessionId || "";
+      sel.addEventListener("change", async () => {
+        if (sel.value) nameMap[e.label] = sel.value; else delete nameMap[e.label];
+        try { lastPreview = await NMStudio.apiAcceptancePreview(file, mapping()); renderPreview(false); }
+        catch (err) { showErr("map-error", err.message); }
+      });
+    });
+  }
+
+  function renderPreview(scroll = true) {
+    const { results, summary, warnings = [] } = lastPreview;
+    $("step-preview").classList.remove("hidden");
+    renderNames();
+    const ign = Object.entries(summary.ignoredBy || {}).map(([v, n]) => `${esc(v)}: ${n}`).join(", ");
+    $("summary").innerHTML = `
+      <span class="studio-pill status-approved">✅ <b>${summary.sessions}</b> <span>متسجّلون سيتم قبولهم</span></span>
+      ${summary.alreadyAccepted ? `<span class="studio-pill status-pending">🏆 <b>${summary.alreadyAccepted}</b> <span>سبق قبولهم</span></span>` : ""}
+      <span class="studio-pill ${summary.errors ? "status-rejected" : "status-pending"}">${summary.errors ? "❌" : "✓"} <b>${summary.errors}</b> <span>صفوف بها مشكلة (لن تُسجَّل)</span></span>
+      ${summary.ignored ? `<span class="studio-pill status-pending">🙈 <b>${summary.ignored}</b> <span>صفوف تم تجاهلها</span> (${ign})</span>` : ""}`;
+    // ONE row per person
+    const people = new Map();
+    for (const r of results.filter((x) => x.ok)) {
+      if (!people.has(r.session.id)) people.set(r.session.id, { r, labels: [] });
+      if (!people.get(r.session.id).labels.includes(r.label)) people.get(r.session.id).labels.push(r.label);
+    }
+    $("result-table").innerHTML = `<thead><tr><th>الاسم في الملف</th><th>المتسجّل</th><th>الليدر</th><th>الحالة</th></tr></thead>
+      <tbody>${[...people.values()].map(({ r, labels }) => `<tr>
+        <td class="fb-email">${labels.map(esc).join("<br>")}</td>
+        <td><span class="studio-code">${esc(r.session.fakeName)}</span><br>${esc(r.session.realName || "")}<br><span class="fb-email">${esc(r.session.email || "")}</span></td>
+        <td>${esc(r.session.leaderCode)}</td>
+        <td>${r.already ? `<span class="studio-hint">🏆 <span>سبق قبوله</span></span>` : `<span class="fb-ok">✅ <span>سيتم قبوله</span></span>`}${r.openFeedback ? `<br><span class="fb-how weak">⚠️ <span>لديه فيدباك مفتوح</span></span>` : ""}</td></tr>`).join("")}</tbody>`;
+    const bad = new Map();
+    for (const r of results.filter((x) => !x.ok)) {
+      const k = r.message || "";
+      if (!bad.has(k)) bad.set(k, { n: 0, rows: [], names: !!r.unmatchedName });
+      const g = bad.get(k); g.n++; if (g.rows.length < 6) g.rows.push(r.row);
+    }
+    $("bad-box").innerHTML = bad.size
+      ? `<div class="fb-warn"><b>❌ <span>صفوف لن يتم تسجيلها</span></b><ul>${[...bad].map(([m, g]) => `<li><span class="fb-err">${esc(m)}</span> — <b>${g.n}</b> <span>صف</span>${g.names ? "" : ` (<span>الصفوف:</span> ${g.rows.join(", ")}${g.n > g.rows.length ? "…" : ""})`}</li>`).join("")}</ul></div>`
+      : "";
+    $("warn-box").innerHTML = warnings.length
+      ? `<div class="fb-warn"><b>⚠️ <span>راجع قبل التسجيل</span></b><ul>${warnings.map((w) => `<li>${esc(w.message)}</li>`).join("")}</ul>
+           <label class="fb-check"><input type="checkbox" id="warn-ok"> <span>اطّلعت على التحذيرات وأرغب في المتابعة</span></label></div>`
+      : "";
+    if (warnings.length) $("warn-ok").addEventListener("change", updateApply);
+    updateApply();
+    $("apply-hint").innerHTML = summary.newly ? `<span>سيتم تسجيل قبول</span> <b>${summary.newly}</b> <span>متسجّل جديد.</span>` : `<span>لا يوجد متسجّل جديد لتسجيله.</span>`;
+    if (scroll) $("step-preview").scrollIntoView({ behavior: "smooth", block: "start" });
+  }
+  function updateApply() {
+    const w = (lastPreview && lastPreview.warnings) || [];
+    const okBox = $("warn-ok");
+    $("apply-btn").disabled = !lastPreview || lastPreview.summary.newly === 0 || (w.length > 0 && !(okBox && okBox.checked));
+  }
+
+  $("apply-btn").addEventListener("click", async () => {
+    showErr("apply-error", "");
+    const { summary } = lastPreview;
+    if (!confirm(`سيتم تسجيل قبول ${summary.newly} متسجّل جديد في المهمة "${task.title}"${summary.alreadyAccepted ? ` (و${summary.alreadyAccepted} سبق قبولهم)` : ""}. سيظهر ذلك في حساب كل متسجّل وفي حساب الليدر الخاص به. هل تريد المتابعة؟`)) return;
+    const btn = $("apply-btn");
+    btn.disabled = true; btn.textContent = "جاري التسجيل...";
+    try {
+      const m = mapping();
+      if ((lastPreview.warnings || []).length) m.confirmWarnings = "1";
+      const r = await NMStudio.apiAcceptanceApply(file, m);
+      toast(`<span>✅ تم تسجيل قبول</span> <b>${r.newly}</b> <span>متسجّل.</span>${r.alreadyAccepted ? ` <b>${r.alreadyAccepted}</b> <span>كانوا مقبولين مسبقًا.</span>` : ""}${r.skipped ? ` <span>تم تخطي</span> <b>${r.skipped}</b> <span>صفوف بها مشكلة.</span>` : ""}`);
+      const id = task.id;
+      closeUpload();
+      await loadBoard();
+      if (openId === id) await reloadDetail();
+    } catch (err) { showErr("apply-error", err.message); }
+    finally { btn.textContent = "✅ تسجيل القبول"; if (lastPreview) updateApply(); }
+  });
+
+  loadBoard();
+</script>
+</body>
+</html>

@@ -188,6 +188,7 @@
                 <td>${s.recorded_count} / ${s.sample_count}</td>
                 <td>
                   <span class="studio-pill ${STATUS_CLASS[s.status] || ""}">${statusLabel(s)}</span>
+                  ${s.accepted_at ? `<div style="margin-top:6px;"><span class="studio-pill status-approved">🏆 تم قبوله من الشركة</span></div>` : ""}
                   ${s.status === "rejected" ? `<div class="studio-hint" style="margin-top:4px; max-width:260px;">⚠️ ${escapeHtml(s.rejection_reason || "")}</div>` : ""}
                 </td>
                 <td>

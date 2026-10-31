@@ -172,7 +172,7 @@
                   ${x.email ? `<br><span style="${ltr}">${esc(x.email)}</span>` : ""}</td>
                 <td>${esc(x.task_title)}</td>
                 <td><span style="${ltr}">${x.recorded} / ${x.total}</span></td>
-                <td><span class="studio-pill ${st[0]}">${st[1]}</span></td>
+                <td><span class="studio-pill ${st[0]}">${st[1]}</span>${x.accepted_at ? `<div style="margin-top:6px;"><span class="studio-pill status-approved">🏆 مقبول من الشركة</span></div>` : ""}</td>
                 <td>${note}</td>
               </tr>`;
             }).join("")}</tbody></table></div>`;
@@ -180,11 +180,11 @@
       tasks.innerHTML = !tl.length
         ? `<div class="studio-empty"><div class="icon">📋</div><p>الهيد ليدر لسه ما ربطش كودك بأي مهمة.</p></div>`
         : `<div class="studio-table-wrap"><table class="studio-table">
-            <thead><tr><th>المهمة</th><th>الحالة</th><th>المتسجّلين</th><th>بيسجّلوا</th><th>اتراجع من خلالنا</th><th>اتراجع من الشركة</th><th>رفض نهائي</th><th>مرفوضة</th></tr></thead>
+            <thead><tr><th>المهمة</th><th>الحالة</th><th>المتسجّلين</th><th>بيسجّلوا</th><th>اتراجع من خلالنا</th><th>اتراجع من الشركة</th><th>رفض نهائي</th><th>مرفوضة</th><th>مقبول من الشركة</th></tr></thead>
             <tbody>${tl.map((t) => {
               const ts = TASK_STATUS[t.status] || ["", t.status];
               return `<tr><td>${esc(t.title)}</td><td><span class="studio-pill ${ts[0]}">${ts[1]}</span></td>
-                <td>${t.sessions}</td><td>${t.in_progress}</td><td>${t.reviewed_by_us}</td><td>${t.reviewed_by_company}</td><td>${t.final_rejected}</td><td>${t.rejected}</td></tr>`;
+                <td>${t.sessions}</td><td>${t.in_progress}</td><td>${t.reviewed_by_us}</td><td>${t.reviewed_by_company}</td><td>${t.final_rejected}</td><td>${t.rejected}</td><td>${t.accepted || 0}</td></tr>`;
             }).join("")}</tbody></table></div>`;
     } catch (err) {
       const msg = `<div class="studio-empty"><p>${esc(err.message)}</p></div>`;

@@ -259,6 +259,14 @@
   function apiMyFeedback() { return apiFetch("/api/studio/feedback/mine"); }
   // v7: the feedback page (task -> file -> person), collecting the rework, the delivered rework
   const qTask = (taskId) => (taskId ? `?taskId=${encodeURIComponent(taskId)}` : "");
+  // ---- company acceptance (القبول من الشركة) ----
+  function apiAcceptanceParse(file, taskId) { return apiUploadFile("/api/studio/acceptance/parse", file, taskId ? { taskId } : undefined); }
+  function apiAcceptancePreview(file, mapping) { return apiUploadFile("/api/studio/acceptance/preview", file, mapping); }
+  function apiAcceptanceApply(file, mapping) { return apiUploadFile("/api/studio/acceptance/apply", file, mapping); }
+  function apiAcceptanceBoard() { return apiFetch("/api/studio/acceptance/board"); }
+  function apiAcceptanceTask(taskId) { return apiFetch(`/api/studio/acceptance/tasks/${encodeURIComponent(taskId)}`); }
+  function apiAcceptanceDeleteFile(fileId) { return apiFetch(`/api/studio/acceptance/files/${encodeURIComponent(fileId)}`, { method: "DELETE" }); }
+  function apiAcceptanceRemove(sessionId) { return apiFetch(`/api/studio/acceptance/sessions/${encodeURIComponent(sessionId)}`, { method: "DELETE" }); }
   function apiFeedbackBoard(taskId) { return apiFetch(`/api/studio/feedback/board${qTask(taskId)}`); }
   function apiFeedbackDelivered(taskId) { return apiFetch(`/api/studio/feedback/delivered${qTask(taskId)}`); }
   function apiFeedbackCollect(fileId, gender) {
@@ -288,6 +296,7 @@
     apiGetTask, apiUpdateTask, apiDeleteTask, apiRemoveTaskLeader, apiUpdateSample, apiDeleteScript, apiUpdateQuotas, apiUpdateLeaderQuotas, apiAddTaskLeader, apiCreateLeader, apiUpdateLeader, apiQaStats,
     apiGetPendingDelivery, apiGetDeliveredBatches, openBatchZip, apiGetStorage, apiMarkDownloaded, apiPurgeStorage, apiCollectGroup, downloadGroupSheet, downloadBatchSheet,
     apiFeedbackParse, apiFeedbackPreview, apiFeedbackApply, apiFeedbackItems, apiMyFeedback, timeLeft,
+    apiAcceptanceParse, apiAcceptancePreview, apiAcceptanceApply, apiAcceptanceBoard, apiAcceptanceTask, apiAcceptanceDeleteFile, apiAcceptanceRemove,
     apiFeedbackBoard, apiFeedbackDelivered, apiFeedbackCollect, downloadFeedbackSheet, downloadReworkBatchSheet,
   };
 })();
